@@ -80,4 +80,6 @@ git push -u origin main
   between devices.
 - Use "Import data from file" to restore a previously saved JSON; the app will restart after importing.
 - In the **People** list, tap the share button next to a person to generate a simple plain-text transaction report
-  that you can send via email, chat, etc.
+  containing only the transactions where both names appear. Split bills are listed first, then a section
+  titled "Owe :" shows IOUs (description, amount and who paid).  A net balance calculation using actual
+  names appears at the end.  You can send this via email, chat, etc.
