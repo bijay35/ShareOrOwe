@@ -12,6 +12,7 @@ object DataManager {
     private const val KEY_PERSONS = "persons"
     private const val KEY_SPLIT_BILLS = "split_bills"
     private const val KEY_IOUS = "ious"
+    private const val KEY_CURRENT_USER = "current_user"
     private val gson = Gson()
 
     fun savePersons(context: Context, persons: List<Person>) {
@@ -48,5 +49,17 @@ object DataManager {
         val json = prefs.getString(KEY_IOUS, null) ?: return mutableListOf()
         val type = object : TypeToken<MutableList<IOU>>() {}.type
         return gson.fromJson(json, type)
+    }
+
+    // current user handling
+    fun saveCurrentUser(context: Context, person: Person) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_CURRENT_USER, gson.toJson(person)).apply()
+    }
+
+    fun getCurrentUser(context: Context): Person? {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val json = prefs.getString(KEY_CURRENT_USER, null) ?: return null
+        return gson.fromJson(json, Person::class.java)
     }
 }

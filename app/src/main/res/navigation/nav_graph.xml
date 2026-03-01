@@ -34,4 +34,22 @@
             app:argType="string" />
     </fragment>
 
+    <fragment
+        android:id="@+id/billDetailsFragment"
+        android:name="com.billshare.app.fragments.BillDetailsFragment"
+        android:label="Bill Details">
+        <argument
+            android:name="billId"
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/iouDetailsFragment"
+        android:name="com.billshare.app.fragments.IOUDetailsFragment"
+        android:label="IOU Details">
+        <argument
+            android:name="iouId"
+            app:argType="string" />
+    </fragment>
+
 </navigation>

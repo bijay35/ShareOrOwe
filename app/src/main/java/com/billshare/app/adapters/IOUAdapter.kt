@@ -6,10 +6,14 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.billshare.app.databinding.ItemIouBinding
 import com.billshare.app.models.IOU
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class IOUAdapter(
     private val ious: List<IOU>,
-    private val onSettle: (IOU) -> Unit
+    private val onSettle: (IOU) -> Unit,
+    private val onItemClick: (IOU) -> Unit = {}
 ) : RecyclerView.Adapter<IOUAdapter.ViewHolder>() {
 
     inner class ViewHolder(val binding: ItemIouBinding) : RecyclerView.ViewHolder(binding.root)
@@ -23,6 +27,11 @@ class IOUAdapter(
         val iou = ious[position]
         holder.binding.tvIouDescription.text = iou.description
         holder.binding.tvIouDetail.text = "${iou.paidBy.name} owes ${iou.owedTo.name} \$${"%.2f".format(iou.amount)}"
+        // date
+        val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+        holder.binding.tvDate.text = sdf.format(Date(iou.date))
+
+        holder.binding.root.setOnClickListener { onItemClick(iou) }
 
         if (iou.isSettled) {
             holder.binding.tvStatus.text = "Settled ✓"

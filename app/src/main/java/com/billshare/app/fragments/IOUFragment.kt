@@ -13,12 +13,17 @@ import com.billshare.app.databinding.FragmentIouBinding
 import com.billshare.app.models.IOU
 import com.billshare.app.models.Person
 import com.billshare.app.utils.DataManager
+import android.app.DatePickerDialog
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class IOUFragment : Fragment() {
 
     private var _binding: FragmentIouBinding? = null
     private val binding get() = _binding!!
     private var persons = mutableListOf<Person>()
+    private var selectedDateMillis: Long = System.currentTimeMillis()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentIouBinding.inflate(inflater, container, false)
@@ -29,6 +34,7 @@ class IOUFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         binding.recyclerIOUs.layoutManager = LinearLayoutManager(requireContext())
         loadPersons()
+        setupDatePicker()
         binding.btnAddIOU.setOnClickListener { saveIOU() }
     }
 
@@ -44,6 +50,11 @@ class IOUFragment : Fragment() {
         val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, names)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.spinnerPaidBy.adapter = adapter
+        // default payer to current user if available
+        DataManager.getCurrentUser(requireContext())?.let { current ->
+            val idx = persons.indexOfFirst { it.id == current.id }
+            if (idx >= 0) binding.spinnerPaidBy.setSelection(idx)
+        }
         binding.spinnerOwedTo.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, names).also {
             it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
@@ -57,7 +68,7 @@ class IOUFragment : Fragment() {
         } else {
             binding.tvEmpty.visibility = View.GONE
             binding.recyclerIOUs.visibility = View.VISIBLE
-            binding.recyclerIOUs.adapter = IOUAdapter(ious) { iou ->
+            binding.recyclerIOUs.adapter = IOUAdapter(ious, { iou ->
                 // Settle IOU
                 val all = DataManager.getIOUs(requireContext())
                 val idx = all.indexOfFirst { it.id == iou.id }
@@ -67,7 +78,7 @@ class IOUFragment : Fragment() {
                     loadIOUs()
                     Toast.makeText(requireContext(), "Marked as settled!", Toast.LENGTH_SHORT).show()
                 }
-            }
+            }, onItemClick = { /* handled by HomeFragment via summary, not needed here */ })
         }
     }
 
@@ -103,7 +114,8 @@ class IOUFragment : Fragment() {
             description = description,
             paidBy = paidBy,
             owedTo = owedTo,
-            amount = amount
+            amount = amount,
+            date = selectedDateMillis
         )
 
         val ious = DataManager.getIOUs(requireContext())
@@ -112,11 +124,31 @@ class IOUFragment : Fragment() {
         Toast.makeText(requireContext(), "${paidBy.name} owes ${owedTo.name} $" + "%.2f".format(amount), Toast.LENGTH_LONG).show()
         binding.etDescription.text?.clear()
         binding.etAmount.text?.clear()
+        // reset date
+        selectedDateMillis = System.currentTimeMillis()
+        binding.etDate.setText(formatDate(selectedDateMillis))
         loadIOUs()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun setupDatePicker() {
+        binding.etDate.setText(formatDate(selectedDateMillis))
+        binding.etDate.setOnClickListener {
+            val cal = Calendar.getInstance().apply { timeInMillis = selectedDateMillis }
+            DatePickerDialog(requireContext(), { _, year, month, dayOfMonth ->
+                cal.set(year, month, dayOfMonth)
+                selectedDateMillis = cal.timeInMillis
+                binding.etDate.setText(formatDate(selectedDateMillis))
+            }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+        }
+    }
+
+    private fun formatDate(millis: Long): String {
+        val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+        return sdf.format(millis)
     }
 }
