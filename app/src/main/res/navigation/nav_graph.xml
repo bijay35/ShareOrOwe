@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.billshare.app.fragments.HomeFragment"
+        android:label="Home" />
+
+    <fragment
+        android:id="@+id/splitBillFragment"
+        android:name="com.billshare.app.fragments.SplitBillFragment"
+        android:label="Split Bill" />
+
+    <fragment
+        android:id="@+id/iouFragment"
+        android:name="com.billshare.app.fragments.IOUFragment"
+        android:label="IOU" />
+
+    <fragment
+        android:id="@+id/peopleFragment"
+        android:name="com.billshare.app.fragments.PeopleFragment"
+        android:label="People" />
+
+</navigation>
