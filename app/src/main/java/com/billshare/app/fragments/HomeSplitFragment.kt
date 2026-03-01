@@ -43,6 +43,9 @@ class HomeSplitFragment : Fragment() {
                 binding.tvToggleFilters.text = "Filter ▲"
             }
         }
+        binding.tvResetFilters.setOnClickListener {
+            resetFilters()
+        }
     }
 
     override fun onResume() {
@@ -207,6 +210,20 @@ class HomeSplitFragment : Fragment() {
             onSet(y, m, d)
         }, now.get(java.util.Calendar.YEAR), now.get(java.util.Calendar.MONTH), now.get(java.util.Calendar.DAY_OF_MONTH))
         dialog.show()
+    }
+
+    private fun resetFilters() {
+        binding.spinnerFilter.setSelection(0)
+        binding.spinnerFilter.tag = null
+        binding.spinnerStatus.setSelection(1)
+        fromTimestamp = null
+        toTimestamp = null
+        binding.btnFromDate.text = "From"
+        binding.btnToDate.text = "To"
+        loadSplitBills()
+        // collapse filters
+        binding.filterContainer.visibility = View.GONE
+        binding.tvToggleFilters.text = "Filter ▼"
     }
 
     override fun onDestroyView() {
