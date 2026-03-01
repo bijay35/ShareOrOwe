@@ -1,5 +1,6 @@
 package com.billshare.app.fragments
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -27,7 +28,7 @@ class PeopleFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        adapter = PersonAdapter(persons) { person ->
+        adapter = PersonAdapter(persons, { person ->
             val current = DataManager.getCurrentUser(requireContext())
             if (current != null && current.id == person.id) {
                 Toast.makeText(requireContext(), "You cannot remove yourself", Toast.LENGTH_SHORT).show()
@@ -48,7 +49,16 @@ class PeopleFragment : Fragment() {
                 }
                 .setNegativeButton("No", null)
                 .show()
-        }
+        }, { person ->
+            // share a simple text report for this person
+            val report = DataManager.getFormattedReportForUser(requireContext(), person)
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "Transactions for ${person.name}")
+                putExtra(Intent.EXTRA_TEXT, report)
+            }
+            startActivity(Intent.createChooser(intent, "Share report"))
+        })
 
         binding.recyclerPeople.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerPeople.adapter = adapter

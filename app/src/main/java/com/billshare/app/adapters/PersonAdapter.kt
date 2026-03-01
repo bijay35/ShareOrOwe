@@ -10,7 +10,8 @@ import android.view.View
 
 class PersonAdapter(
     private val persons: MutableList<Person>,
-    private val onDelete: (Person) -> Unit
+    private val onDelete: (Person) -> Unit,
+    private val onShare: (Person) -> Unit
 ) : RecyclerView.Adapter<PersonAdapter.ViewHolder>() {
 
     inner class ViewHolder(val binding: ItemPersonBinding) : RecyclerView.ViewHolder(binding.root)
@@ -27,9 +28,12 @@ class PersonAdapter(
         val current = DataManager.getCurrentUser(holder.binding.root.context)
         if (current != null && current.id == person.id) {
             holder.binding.btnDelete.visibility = View.GONE
+            holder.binding.btnShare.visibility = View.GONE
         } else {
             holder.binding.btnDelete.visibility = View.VISIBLE
             holder.binding.btnDelete.setOnClickListener { onDelete(person) }
+            holder.binding.btnShare.visibility = View.VISIBLE
+            holder.binding.btnShare.setOnClickListener { onShare(person) }
         }
     }
 

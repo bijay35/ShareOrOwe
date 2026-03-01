@@ -73,4 +73,86 @@ object DataManager {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().clear().apply()
     }
+
+    // export/import helpers -------------------------------------------------
+
+    private data class ExportWrapper(
+        val persons: List<Person>,
+        val splitBills: List<SplitBill>,
+        val ious: List<IOU>
+    )
+
+    /**
+     * Return a JSON string containing everything persisted by the app.
+     * This can be saved to a file for backup or shared with another device.
+     */
+    fun exportAllData(context: Context): String {
+        val wrapper = ExportWrapper(
+            persons = getPersons(context),
+            splitBills = getSplitBills(context),
+            ious = getIOUs(context)
+        )
+        return gson.toJson(wrapper)
+    }
+
+    /**
+     * Attempt to import the provided JSON string as an entire dataset.  Returns
+     * true on success or false if the payload could not be parsed.
+     * On success the current preferences are overwritten.
+     */
+    fun importAllData(context: Context, json: String): Boolean {
+        return try {
+            val type = object : TypeToken<ExportWrapper>() {}.type
+            val wrapper: ExportWrapper = gson.fromJson(json, type)
+            // overwrite everything
+            savePersons(context, wrapper.persons)
+            saveSplitBills(context, wrapper.splitBills)
+            saveIOUs(context, wrapper.ious)
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    /**
+     * Produce a human-readable text report containing all transactions for the
+     * requested person.  The output can be shared via plain text.
+     */
+    fun getFormattedReportForUser(context: Context, person: Person): String {
+        val sb = StringBuilder()
+        sb.append("Report for ${person.name}\n")
+        sb.append("=====================\n\n")
+
+        val splits = getSplitBills(context)
+        if (splits.isNotEmpty()) {
+            sb.append("Split bills:\n")
+            for (bill in splits) {
+                if (bill.paidBy.id == person.id || bill.participants.any { it.id == person.id }) {
+                    sb.append("- ${bill.description}: total ${bill.totalAmount}, paid by ${bill.paidBy.name}")
+                    if (!bill.isSettled) sb.append(" (unsettled)")
+                    sb.append("\n")
+                }
+            }
+            sb.append("\n")
+        }
+
+        val ious = getIOUs(context)
+        if (ious.isNotEmpty()) {
+            sb.append("IOUs:\n")
+            for (iou in ious) {
+                if (iou.paidBy.id == person.id || iou.owedTo.id == person.id) {
+                    sb.append("- ${iou.amount} from ${iou.paidBy.name} to ${iou.owedTo.name}")
+                    if (!iou.isSettled) sb.append(" (unsettled)")
+                    sb.append("\n")
+                }
+            }
+            sb.append("\n")
+        }
+
+        if (sb.isEmpty()) {
+            sb.append("No transactions found for ${person.name}.\n")
+        }
+        return sb.toString()
+    }
 }
