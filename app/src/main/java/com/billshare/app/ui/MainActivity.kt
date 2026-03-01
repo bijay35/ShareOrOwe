@@ -6,6 +6,8 @@ import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import com.billshare.app.databinding.ActivityMainBinding
 import com.billshare.app.R
+import com.billshare.app.utils.DataManager
+import android.content.Intent
 
 class MainActivity : AppCompatActivity() {
 
@@ -15,6 +17,16 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // ensure logged in
+        val current = DataManager.getCurrentUser(this)
+        if (current == null) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        } else {
+            supportActionBar?.title = "Hello, ${current.name}"
+        }
 
         val navHostFragment = supportFragmentManager
             .findFragmentById(R.id.nav_host_fragment) as NavHostFragment

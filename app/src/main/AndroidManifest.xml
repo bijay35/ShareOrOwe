@@ -18,9 +18,10 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".ui.AddBillActivity" />
-        <activity android:name=".ui.OwesActivity" />
-        <activity android:name=".ui.SummaryActivity" />
+        <!-- login screen for first‑time user or logout -->
+        <activity android:name=".ui.LoginActivity" android:exported="false" />
+
+        <!-- legacy entries removed (no source files) -->
 
     </application>
 

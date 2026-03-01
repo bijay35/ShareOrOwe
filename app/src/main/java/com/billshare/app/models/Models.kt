@@ -17,7 +17,8 @@ data class SplitBill(
     val paidBy: Person,
     val totalAmount: Double,
     val participants: List<Person>,
-    val date: Long = System.currentTimeMillis()
+    val date: Long = System.currentTimeMillis(),
+    var isSettled: Boolean = false
 ) : Parcelable {
     val sharePerPerson: Double get() = totalAmount / participants.size
     val owedByOthers: Map<String, Double> get() =

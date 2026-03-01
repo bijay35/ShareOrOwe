@@ -11,32 +11,26 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="12dp">
+        android:padding="16dp">
 
         <TextView
-            android:id="@+id/tv_iou_description"
+            android:id="@+id/tv_description"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="15sp"
             android:textStyle="bold"
+            android:textSize="16sp"
             android:text="Description" />
 
         <TextView
-            android:id="@+id/tv_iou_detail"
+            android:id="@+id/tv_detail"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="13sp"
-            android:textColor="#555"
-            android:paddingTop="2dp"
-            android:text="A owes B $0.00" />
+            android:text="Detail" />
 
         <TextView
             android:id="@+id/tv_date"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="12sp"
-            android:textColor="#777"
-            android:paddingTop="2dp"
             android:text="Date" />
 
         <LinearLayout
@@ -51,7 +45,6 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textSize="13sp"
                 android:text="Pending" />
 
             <com.google.android.material.button.MaterialButton
@@ -59,7 +52,7 @@
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Mark Settled"
+                android:text="Settle"
                 android:textSize="12sp"/>
 
         </LinearLayout>

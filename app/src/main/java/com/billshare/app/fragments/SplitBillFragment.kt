@@ -52,6 +52,11 @@ class SplitBillFragment : Fragment() {
         val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, names)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.spinnerPaidBy.adapter = adapter
+        // default selection to current user if present
+        DataManager.getCurrentUser(requireContext())?.let { current ->
+            val idx = persons.indexOfFirst { it.id == current.id }
+            if (idx >= 0) binding.spinnerPaidBy.setSelection(idx)
+        }
 
         // Dynamically add checkboxes for participants
         binding.checkboxContainer.removeAllViews()
