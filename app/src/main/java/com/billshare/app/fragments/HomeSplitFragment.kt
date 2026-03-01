@@ -20,6 +20,9 @@ class HomeSplitFragment : Fragment() {
     private var _binding: FragmentHomeSplitBinding? = null
     private val binding get() = _binding!!
 
+    private var fromTimestamp: Long? = null
+    private var toTimestamp: Long? = null
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHomeSplitBinding.inflate(inflater, container, false)
         return binding.root
@@ -29,6 +32,7 @@ class HomeSplitFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         binding.recyclerSplit.layoutManager = LinearLayoutManager(requireContext())
         setupSplitFilter()
+        setupDateButtons()
     }
 
     override fun onResume() {
@@ -58,28 +62,55 @@ class HomeSplitFragment : Fragment() {
             }
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         }
+
+        // status spinner
+        val statuses = listOf("All", "Settled", "Unsettled")
+        val statusAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, statuses)
+        statusAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerStatus.adapter = statusAdapter
+        binding.spinnerStatus.setSelection(0)
+        binding.spinnerStatus.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                loadSplitBills()
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        }
     }
 
     private fun loadSplitBills() {
         val context = requireContext()
         val allBills = DataManager.getSplitBills(context)
         val current = DataManager.getCurrentUser(requireContext())
+        // start with all bills (use immutable type for filtering)
+        var filtered: List<SplitBill> = allBills
+
+        // status filtering
+        when (binding.spinnerStatus.selectedItem as String) {
+            "Settled" -> filtered = filtered.filter { it.isSettled }
+            "Unsettled" -> filtered = filtered.filter { !it.isSettled }
+            // "All" does nothing
+        }
+
         // only consider bills where current user is involved
-        var pending = allBills.filter { !it.isSettled }
         if (current != null) {
-            pending = pending.filter { bill ->
+            filtered = filtered.filter { bill ->
                 bill.paidBy.id == current.id || bill.participants.any { it.id == current.id }
             }
         }
 
+        // person filter
         val filterId = binding.spinnerFilter.tag as? String
-        val filtered = if (filterId == null) {
-            pending
+        filtered = if (filterId == null) {
+            filtered
         } else {
-            pending.filter { bill ->
+            filtered.filter { bill ->
                 bill.paidBy.id == filterId || bill.participants.any { it.id == filterId }
             }
         }
+
+        // date range filter
+        fromTimestamp?.let { from -> filtered = filtered.filter { it.date >= from } }
+        toTimestamp?.let { to -> filtered = filtered.filter { it.date <= to } }
 
         val totalText = calculateSplitTotal(filtered, filterId)
         if (totalText != null) {
@@ -131,6 +162,40 @@ class HomeSplitFragment : Fragment() {
             net < 0 -> "You owe $${"%.2f".format(-net)} to $name"
             else -> null
         }
+    }
+
+    private fun setupDateButtons() {
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        binding.btnFromDate.setOnClickListener {
+            showDateDialog { year, month, day ->
+                val cal = java.util.Calendar.getInstance().apply {
+                    set(year, month, day, 0, 0, 0)
+                    set(java.util.Calendar.MILLISECOND, 0)
+                }
+                fromTimestamp = cal.timeInMillis
+                binding.btnFromDate.text = fmt.format(cal.time)
+                loadSplitBills()
+            }
+        }
+        binding.btnToDate.setOnClickListener {
+            showDateDialog { year, month, day ->
+                val cal = java.util.Calendar.getInstance().apply {
+                    set(year, month, day, 23, 59, 59)
+                    set(java.util.Calendar.MILLISECOND, 999)
+                }
+                toTimestamp = cal.timeInMillis
+                binding.btnToDate.text = fmt.format(cal.time)
+                loadSplitBills()
+            }
+        }
+    }
+
+    private fun showDateDialog(onSet: (year: Int, month: Int, day: Int) -> Unit) {
+        val now = java.util.Calendar.getInstance()
+        val dialog = android.app.DatePickerDialog(requireContext(), { _, y, m, d ->
+            onSet(y, m, d)
+        }, now.get(java.util.Calendar.YEAR), now.get(java.util.Calendar.MONTH), now.get(java.util.Calendar.DAY_OF_MONTH))
+        dialog.show()
     }
 
     override fun onDestroyView() {

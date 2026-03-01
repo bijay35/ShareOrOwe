@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.billshare.app.adapters.IOUAdapter
@@ -17,6 +18,9 @@ class HomeOweFragment : Fragment() {
     private var _binding: FragmentHomeOweBinding? = null
     private val binding get() = _binding!!
 
+    private var fromTimestamp: Long? = null
+    private var toTimestamp: Long? = null
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHomeOweBinding.inflate(inflater, container, false)
         return binding.root
@@ -25,6 +29,8 @@ class HomeOweFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.recyclerIouSummary.layoutManager = LinearLayoutManager(requireContext())
+        setupFilters()
+        setupDateButtons()
     }
 
     override fun onResume() {
@@ -33,7 +39,35 @@ class HomeOweFragment : Fragment() {
     }
 
     private fun loadIOUSummary() {
-        val ious = DataManager.getIOUs(requireContext())
+        var ious: List<IOU> = DataManager.getIOUs(requireContext())
+
+        // limit to IOUs where current user is involved
+        val current = DataManager.getCurrentUser(requireContext())
+        if (current != null) {
+            ious = ious.filter { iou ->
+                iou.paidBy.id == current.id || iou.owedTo.id == current.id
+            }
+        }
+
+        // status filter
+        when (binding.spinnerStatus.selectedItem as String) {
+            "Settled" -> ious = ious.filter { it.isSettled }
+            "Unsettled" -> ious = ious.filter { !it.isSettled }
+            // All nothing
+        }
+
+        // person filter
+        val filterId = binding.spinnerFilter.tag as? String
+        if (filterId != null) {
+            ious = ious.filter { iou ->
+                iou.paidBy.id == filterId || iou.owedTo.id == filterId
+            }
+        }
+
+        // date range
+        fromTimestamp?.let { from -> ious = ious.filter { it.date >= from } }
+        toTimestamp?.let { to -> ious = ious.filter { it.date <= to } }
+
         if (ious.isEmpty()) {
             binding.tvEmptyIou.visibility = View.VISIBLE
             binding.recyclerIouSummary.visibility = View.GONE
@@ -58,5 +92,75 @@ class HomeOweFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun setupFilters() {
+        // person spinner
+        val allPersons = DataManager.getPersons(requireContext())
+        val current = DataManager.getCurrentUser(requireContext())
+        val persons = if (current != null) allPersons.filter { it.id != current.id } else allPersons
+        val names = mutableListOf("All")
+        names.addAll(persons.map { it.name })
+        val ids = mutableListOf<String?>(null)
+        ids.addAll(persons.map { it.id })
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, names)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerFilter.adapter = adapter
+        binding.spinnerFilter.setSelection(0)
+        binding.spinnerFilter.tag = null
+        binding.spinnerFilter.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                binding.spinnerFilter.tag = ids.getOrNull(position)
+                loadIOUSummary()
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        }
+
+        // status spinner
+        val statuses = listOf("All", "Settled", "Unsettled")
+        val statusAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, statuses)
+        statusAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerStatus.adapter = statusAdapter
+        binding.spinnerStatus.setSelection(0)
+        binding.spinnerStatus.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                loadIOUSummary()
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        }
+    }
+
+    private fun setupDateButtons() {
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        binding.btnFromDate.setOnClickListener {
+            showDateDialog { y, m, d ->
+                val cal = java.util.Calendar.getInstance().apply {
+                    set(y, m, d, 0, 0, 0)
+                    set(java.util.Calendar.MILLISECOND, 0)
+                }
+                fromTimestamp = cal.timeInMillis
+                binding.btnFromDate.text = fmt.format(cal.time)
+                loadIOUSummary()
+            }
+        }
+        binding.btnToDate.setOnClickListener {
+            showDateDialog { y, m, d ->
+                val cal = java.util.Calendar.getInstance().apply {
+                    set(y, m, d, 23, 59, 59)
+                    set(java.util.Calendar.MILLISECOND, 999)
+                }
+                toTimestamp = cal.timeInMillis
+                binding.btnToDate.text = fmt.format(cal.time)
+                loadIOUSummary()
+            }
+        }
+    }
+
+    private fun showDateDialog(onSet: (year: Int, month: Int, day: Int) -> Unit) {
+        val now = java.util.Calendar.getInstance()
+        val dialog = android.app.DatePickerDialog(requireContext(), { _, y, m, d ->
+            onSet(y, m, d)
+        }, now.get(java.util.Calendar.YEAR), now.get(java.util.Calendar.MONTH), now.get(java.util.Calendar.DAY_OF_MONTH))
+        dialog.show()
     }
 }

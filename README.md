@@ -73,6 +73,9 @@ git push -u origin main
 2. For a shared dinner → Go to **Split** tab → Enter amount, who paid, select who's splitting
 3. For a direct IOU → Go to **IOU** tab → Select who paid and who owes them back
 4. Check **Home** tab anytime to see the net balance summary
+   - both the Split and Owe pages now include filter controls at the top.  Use the person
+     dropdown plus a status selector (All/Settled/Unsettled) and optional From/To dates
+     to narrow results.
 
 ### Data export, import, and reports
 

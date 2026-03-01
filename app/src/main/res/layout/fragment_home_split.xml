@@ -11,6 +11,34 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp" />
 
+    <Spinner
+        android:id="@+id/spinner_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
+
+        <Button
+            android:id="@+id/btn_from_date"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="From" />
+
+        <Button
+            android:id="@+id/btn_to_date"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="To" />
+    </LinearLayout>
+
     <TextView
         android:id="@+id/tv_empty_split"
         android:layout_width="match_parent"
