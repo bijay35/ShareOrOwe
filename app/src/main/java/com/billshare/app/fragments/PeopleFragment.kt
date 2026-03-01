@@ -28,14 +28,32 @@ class PeopleFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         adapter = PersonAdapter(persons) { person ->
-            persons.remove(person)
-            DataManager.savePersons(requireContext(), persons)
-            adapter.notifyDataSetChanged()
+            val current = DataManager.getCurrentUser(requireContext())
+            if (current != null && current.id == person.id) {
+                Toast.makeText(requireContext(), "You cannot remove yourself", Toast.LENGTH_SHORT).show()
+                return@PersonAdapter
+            }
+            // ask for confirmation
+            android.app.AlertDialog.Builder(requireContext())
+                .setTitle("Remove ${person.name}?")
+                .setMessage("Are you sure you want to remove this person?")
+                .setPositiveButton("Yes") { _, _ ->
+                    if (hasUnsettled(person)) {
+                        Toast.makeText(requireContext(), "Cannot delete: there are unsettled bills/IOUs", Toast.LENGTH_LONG).show()
+                    } else {
+                        persons.remove(person)
+                        DataManager.savePersons(requireContext(), persons)
+                        adapter.notifyDataSetChanged()
+                    }
+                }
+                .setNegativeButton("No", null)
+                .show()
         }
 
         binding.recyclerPeople.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerPeople.adapter = adapter
 
+        persons.clear()
         persons.addAll(DataManager.getPersons(requireContext()))
         adapter.notifyDataSetChanged()
 
@@ -57,5 +75,18 @@ class PeopleFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun hasUnsettled(person: Person): Boolean {
+        val context = requireContext()
+        val splitBills = DataManager.getSplitBills(context)
+        if (splitBills.any { !it.isSettled && (it.paidBy.id == person.id || it.participants.any { p -> p.id == person.id }) }) {
+            return true
+        }
+        val ious = DataManager.getIOUs(context)
+        if (ious.any { !it.isSettled && (it.paidBy.id == person.id || it.owedTo.id == person.id) }) {
+            return true
+        }
+        return false
     }
 }
