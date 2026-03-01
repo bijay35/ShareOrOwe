@@ -120,18 +120,30 @@ object DataManager {
      * requested person.  The output can be shared via plain text.
      */
     fun getFormattedReportForUser(context: Context, person: Person): String {
+        val me = getCurrentUser(context)
+            ?: return "No current user; cannot generate report."
+
         val sb = StringBuilder()
-        sb.append("Report for ${person.name}\n")
-        sb.append("=====================\n\n")
+        sb.append("Report for ${me.name} and ${person.name}\n")
+        sb.append("=======================================\n\n")
+
+        var net = 0.0
 
         val splits = getSplitBills(context)
         if (splits.isNotEmpty()) {
             sb.append("Split bills:\n")
             for (bill in splits) {
-                if (bill.paidBy.id == person.id || bill.participants.any { it.id == person.id }) {
-                    sb.append("- ${bill.description}: total ${bill.totalAmount}, paid by ${bill.paidBy.name}")
-                    if (!bill.isSettled) sb.append(" (unsettled)")
-                    sb.append("\n")
+                val involvesPerson = bill.paidBy.id == person.id || bill.participants.any { it.id == person.id }
+                val involvesMe = bill.paidBy.id == me.id || bill.participants.any { it.id == me.id }
+                if (involvesPerson && involvesMe && !bill.isSettled) {
+                    sb.append("- ${bill.description}: total ${bill.totalAmount}, paid by ${bill.paidBy.name}\n")
+                    // adjust net: positive means person owes me
+                    val share = bill.totalAmount / bill.participants.size
+                    when {
+                        bill.paidBy.id == me.id && bill.participants.any { it.id == person.id } -> net += share
+                        bill.paidBy.id == person.id && bill.participants.any { it.id == me.id } -> net -= share
+                        // if paid by third party, ignore for net
+                    }
                 }
             }
             sb.append("\n")
@@ -139,20 +151,29 @@ object DataManager {
 
         val ious = getIOUs(context)
         if (ious.isNotEmpty()) {
-            sb.append("IOUs:\n")
+            sb.append("Owe :\n")
             for (iou in ious) {
-                if (iou.paidBy.id == person.id || iou.owedTo.id == person.id) {
-                    sb.append("- ${iou.amount} from ${iou.paidBy.name} to ${iou.owedTo.name}")
-                    if (!iou.isSettled) sb.append(" (unsettled)")
-                    sb.append("\n")
+                val involvesPerson = iou.paidBy.id == person.id || iou.owedTo.id == person.id
+                val involvesMe = iou.paidBy.id == me.id || iou.owedTo.id == me.id
+                if (involvesPerson && involvesMe && !iou.isSettled) {
+                    sb.append("- ${iou.description}: ${iou.amount}, paid by ${iou.paidBy.name}\n")
+                    if (iou.paidBy.id == me.id && iou.owedTo.id == person.id) net += iou.amount
+                    if (iou.paidBy.id == person.id && iou.owedTo.id == me.id) net -= iou.amount
                 }
             }
             sb.append("\n")
         }
 
-        if (sb.isEmpty()) {
-            sb.append("No transactions found for ${person.name}.\n")
-        }
+        // final net summary
+        sb.append("Net balance:\n")
+        sb.append(
+            when {
+                net > 0 -> "${person.name} owes ${me.name} ${"%.2f".format(net)}\n"
+                net < 0 -> "${me.name} owes ${person.name} ${"%.2f".format(-net)}\n"
+                else -> "Even.\n"
+            }
+        )
+
         return sb.toString()
     }
 }
