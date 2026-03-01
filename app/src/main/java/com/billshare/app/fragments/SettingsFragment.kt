@@ -17,6 +17,9 @@ class SettingsFragment : Fragment() {
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
 
+    private val REQUEST_EXPORT = 1001
+    private val REQUEST_IMPORT = 1002
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
@@ -29,6 +32,8 @@ class SettingsFragment : Fragment() {
         loadProfile()
 
         binding.btnSaveProfile.setOnClickListener { saveProfile() }
+        binding.btnExportData.setOnClickListener { exportData() }
+        binding.btnImportData.setOnClickListener { importData() }
         binding.btnClearSplits.setOnClickListener { confirmClear("split bills") { clearSplits() } }
         binding.btnClearIous.setOnClickListener { confirmClear("IOUs") { clearIOUs() } }
         binding.btnDeleteAccount.setOnClickListener { confirmDeleteAccount() }
@@ -92,5 +97,59 @@ class SettingsFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    // ---------- file export/import helpers ----------
+
+    private fun exportData() {
+        val json = DataManager.exportAllData(requireContext())
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+            putExtra(Intent.EXTRA_TITLE, "billshare_export.json")
+        }
+        startActivityForResult(intent, REQUEST_EXPORT)
+    }
+
+    private fun importData() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+        }
+        startActivityForResult(intent, REQUEST_IMPORT)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != android.app.Activity.RESULT_OK || data == null) return
+        when (requestCode) {
+            REQUEST_EXPORT -> {
+                val uri = data.data ?: return
+                try {
+                    requireContext().contentResolver.openOutputStream(uri)?.use { os ->
+                        os.write(DataManager.exportAllData(requireContext()).toByteArray())
+                    }
+                    Toast.makeText(requireContext(), "Data exported", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Toast.makeText(requireContext(), "Failed to export: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+            REQUEST_IMPORT -> {
+                val uri = data.data ?: return
+                try {
+                    val text = requireContext().contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                    if (text != null && DataManager.importAllData(requireContext(), text)) {
+                        Toast.makeText(requireContext(), "Data imported, restarting...", Toast.LENGTH_SHORT).show()
+                        requireActivity().recreate()
+                    } else {
+                        Toast.makeText(requireContext(), "Import failed: invalid format", Toast.LENGTH_LONG).show()
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Toast.makeText(requireContext(), "Failed to import: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 }

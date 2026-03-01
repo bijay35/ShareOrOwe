@@ -23,6 +23,15 @@
             android:text="Person Name"/>
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_share"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:icon="@android:drawable/ic_menu_share"
+            android:text="Share"
+            android:layout_marginEnd="4dp"/>
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_delete"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="wrap_content"

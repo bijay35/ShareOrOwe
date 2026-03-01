@@ -33,6 +33,21 @@
             android:layout_height="wrap_content"
             android:text="Save" />
 
+        <!-- export / import -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_export_data"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Export data to file"
+            android:layout_marginTop="8dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_import_data"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Import data from file"
+            android:layout_marginTop="4dp" />
+
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"

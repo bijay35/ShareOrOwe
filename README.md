@@ -73,3 +73,11 @@ git push -u origin main
 2. For a shared dinner → Go to **Split** tab → Enter amount, who paid, select who's splitting
 3. For a direct IOU → Go to **IOU** tab → Select who paid and who owes them back
 4. Check **Home** tab anytime to see the net balance summary
+
+### Data export, import, and reports
+
+- In **Settings** you can export your entire dataset to a JSON file. This is handy for backups or migrating
+  between devices.
+- Use "Import data from file" to restore a previously saved JSON; the app will restart after importing.
+- In the **People** list, tap the share button next to a person to generate a simple plain-text transaction report
+  that you can send via email, chat, etc.
