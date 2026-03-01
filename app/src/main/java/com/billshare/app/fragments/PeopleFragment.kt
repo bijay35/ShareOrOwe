@@ -54,7 +54,13 @@ class PeopleFragment : Fragment() {
         binding.recyclerPeople.adapter = adapter
 
         persons.clear()
-        persons.addAll(DataManager.getPersons(requireContext()))
+        val all = DataManager.getPersons(requireContext())
+        val current = DataManager.getCurrentUser(requireContext())
+        if (current != null) {
+            persons.addAll(all.filter { it.id != current.id })
+        } else {
+            persons.addAll(all)
+        }
         adapter.notifyDataSetChanged()
 
         binding.btnAddPerson.setOnClickListener {

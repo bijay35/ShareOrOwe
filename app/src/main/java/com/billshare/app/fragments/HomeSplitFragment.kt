@@ -37,7 +37,10 @@ class HomeSplitFragment : Fragment() {
     }
 
     private fun setupSplitFilter() {
-        val persons = DataManager.getPersons(requireContext())
+        val allPersons = DataManager.getPersons(requireContext())
+        val current = DataManager.getCurrentUser(requireContext())
+        // exclude current user from dropdown options
+        val persons = if (current != null) allPersons.filter { it.id != current.id } else allPersons
         val names = mutableListOf("All")
         names.addAll(persons.map { it.name })
         val ids = mutableListOf<String?>(null)
@@ -60,7 +63,14 @@ class HomeSplitFragment : Fragment() {
     private fun loadSplitBills() {
         val context = requireContext()
         val allBills = DataManager.getSplitBills(context)
-        val pending = allBills.filter { !it.isSettled }
+        val current = DataManager.getCurrentUser(requireContext())
+        // only consider bills where current user is involved
+        var pending = allBills.filter { !it.isSettled }
+        if (current != null) {
+            pending = pending.filter { bill ->
+                bill.paidBy.id == current.id || bill.participants.any { it.id == current.id }
+            }
+        }
 
         val filterId = binding.spinnerFilter.tag as? String
         val filtered = if (filterId == null) {
