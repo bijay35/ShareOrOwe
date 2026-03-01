@@ -109,7 +109,7 @@ class HomeOweFragment : Fragment() {
         val allPersons = DataManager.getPersons(requireContext())
         val current = DataManager.getCurrentUser(requireContext())
         val persons = if (current != null) allPersons.filter { it.id != current.id } else allPersons
-        val names = mutableListOf("All")
+        val names = mutableListOf("All people")
         names.addAll(persons.map { it.name })
         val ids = mutableListOf<String?>(null)
         ids.addAll(persons.map { it.id })
@@ -127,11 +127,11 @@ class HomeOweFragment : Fragment() {
         }
 
         // status spinner
-        val statuses = listOf("All", "Settled", "Unsettled")
+        val statuses = listOf("Settled", "Unsettled", "All")
         val statusAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, statuses)
         statusAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.spinnerStatus.adapter = statusAdapter
-        binding.spinnerStatus.setSelection(0)
+        binding.spinnerStatus.setSelection(1) // default to Unsettled
         binding.spinnerStatus.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
                 loadIOUSummary()
