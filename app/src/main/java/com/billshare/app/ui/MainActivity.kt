@@ -1,10 +1,11 @@
-package com.billshare.app
+package com.billshare.app.ui
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import com.billshare.app.databinding.ActivityMainBinding
+import com.billshare.app.R
 
 class MainActivity : AppCompatActivity() {
 
