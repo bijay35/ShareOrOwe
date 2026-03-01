@@ -5,39 +5,58 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <!-- filters: person, status, date range -->
-    <Spinner
-        android:id="@+id/spinner_filter"
+    <!-- filter header -->
+    <TextView
+        android:id="@+id/tv_toggle_filters"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp" />
-
-    <Spinner
-        android:id="@+id/spinner_status"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp" />
+        android:text="Filter ▼"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:padding="8dp"
+        android:background="#EEEEEE" />
 
     <LinearLayout
+        android:id="@+id/filter_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="8dp">
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:paddingTop="8dp">
 
-        <Button
-            android:id="@+id/btn_from_date"
-            android:layout_width="0dp"
+        <Spinner
+            android:id="@+id/spinner_filter"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="From" />
+            android:layout_marginBottom="8dp" />
 
-        <Button
-            android:id="@+id/btn_to_date"
-            android:layout_width="0dp"
+        <Spinner
+            android:id="@+id/spinner_status"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_weight="1"
-            android:text="To" />
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <Button
+                android:id="@+id/btn_from_date"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="From" />
+
+            <Button
+                android:id="@+id/btn_to_date"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="To" />
+        </LinearLayout>
     </LinearLayout>
 
     <TextView

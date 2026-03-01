@@ -33,6 +33,16 @@ class HomeSplitFragment : Fragment() {
         binding.recyclerSplit.layoutManager = LinearLayoutManager(requireContext())
         setupSplitFilter()
         setupDateButtons()
+        binding.tvToggleFilters.setOnClickListener {
+            val container = binding.filterContainer
+            if (container.visibility == View.VISIBLE) {
+                container.visibility = View.GONE
+                binding.tvToggleFilters.text = "Filter ▼"
+            } else {
+                container.visibility = View.VISIBLE
+                binding.tvToggleFilters.text = "Filter ▲"
+            }
+        }
     }
 
     override fun onResume() {
@@ -78,6 +88,7 @@ class HomeSplitFragment : Fragment() {
     }
 
     private fun loadSplitBills() {
+        // ensure filter section collapsed when loading? leave as is
         val context = requireContext()
         val allBills = DataManager.getSplitBills(context)
         val current = DataManager.getCurrentUser(requireContext())

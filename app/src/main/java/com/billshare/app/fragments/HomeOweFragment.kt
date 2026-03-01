@@ -31,6 +31,16 @@ class HomeOweFragment : Fragment() {
         binding.recyclerIouSummary.layoutManager = LinearLayoutManager(requireContext())
         setupFilters()
         setupDateButtons()
+        binding.tvToggleFilters.setOnClickListener {
+            val container = binding.filterContainer
+            if (container.visibility == View.VISIBLE) {
+                container.visibility = View.GONE
+                binding.tvToggleFilters.text = "Filter ▼"
+            } else {
+                container.visibility = View.VISIBLE
+                binding.tvToggleFilters.text = "Filter ▲"
+            }
+        }
     }
 
     override fun onResume() {
