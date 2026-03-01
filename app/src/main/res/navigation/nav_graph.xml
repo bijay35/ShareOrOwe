@@ -29,6 +29,11 @@
         android:name="com.billshare.app.fragments.PeopleFragment"
         android:label="People" />
 
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.billshare.app.fragments.SettingsFragment"
+        android:label="Settings" />
+
     <!-- screen for viewing bills paid by a particular person -->
     <fragment
         android:id="@+id/personDetailsFragment"

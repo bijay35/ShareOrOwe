@@ -62,4 +62,15 @@ object DataManager {
         val json = prefs.getString(KEY_CURRENT_USER, null) ?: return null
         return gson.fromJson(json, Person::class.java)
     }
+
+    fun clearData(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().remove(KEY_PERSONS).remove(KEY_SPLIT_BILLS).remove(KEY_IOUS).apply()
+    }
+
+    fun deleteAccount(context: Context) {
+        // clear everything including current user
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().clear().apply()
+    }
 }

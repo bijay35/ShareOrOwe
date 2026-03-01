@@ -16,4 +16,9 @@
         android:title="People"
         android:icon="@android:drawable/ic_menu_myplaces"/>
 
+    <item
+        android:id="@+id/settingsFragment"
+        android:title="Settings"
+        android:icon="@android:drawable/ic_menu_manage"/>
+
 </menu>
