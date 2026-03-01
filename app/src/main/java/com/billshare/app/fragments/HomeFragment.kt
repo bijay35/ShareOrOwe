@@ -11,6 +11,8 @@ import com.billshare.app.databinding.FragmentHomeBinding
 import com.billshare.app.models.Balance
 import com.billshare.app.models.Person
 import com.billshare.app.utils.DataManager
+import com.billshare.app.R
+import androidx.navigation.fragment.findNavController
 
 class HomeFragment : Fragment() {
 
@@ -69,7 +71,11 @@ class HomeFragment : Fragment() {
         } else {
             binding.tvEmpty.visibility = View.GONE
             binding.recyclerBalances.visibility = View.VISIBLE
-            binding.recyclerBalances.adapter = BalanceAdapter(balances)
+            binding.recyclerBalances.adapter = BalanceAdapter(balances) { person ->
+                // navigate to details fragment, passing person id
+                val bundle = Bundle().apply { putString("personId", person.id) }
+                findNavController().navigate(R.id.personDetailsFragment, bundle)
+            }
         }
     }
 

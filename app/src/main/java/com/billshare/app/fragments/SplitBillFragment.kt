@@ -12,6 +12,10 @@ import com.billshare.app.databinding.FragmentSplitBillBinding
 import com.billshare.app.models.Person
 import com.billshare.app.models.SplitBill
 import com.billshare.app.utils.DataManager
+import android.app.DatePickerDialog
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class SplitBillFragment : Fragment() {
 
@@ -19,6 +23,9 @@ class SplitBillFragment : Fragment() {
     private val binding get() = _binding!!
     private var persons = mutableListOf<Person>()
     private val selectedParticipants = mutableListOf<Person>()
+
+    // user-selected date for the bill (millis)
+    private var selectedDateMillis: Long = System.currentTimeMillis()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentSplitBillBinding.inflate(inflater, container, false)
@@ -28,6 +35,7 @@ class SplitBillFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         loadPersons()
+        setupDatePicker()
 
         binding.btnAddSplitBill.setOnClickListener { saveSplitBill() }
     }
@@ -62,6 +70,8 @@ class SplitBillFragment : Fragment() {
     }
 
     private fun saveSplitBill() {
+        // ensure date is shown if user hasn't touched field
+        binding.etDate.setText(formatDate(selectedDateMillis))
         val description = binding.etDescription.text.toString().trim()
         val amountStr = binding.etAmount.text.toString().trim()
 
@@ -86,7 +96,8 @@ class SplitBillFragment : Fragment() {
             description = description,
             paidBy = paidBy,
             totalAmount = amount,
-            participants = selectedParticipants.toList()
+            participants = selectedParticipants.toList(),
+            date = selectedDateMillis
         )
 
         val bills = DataManager.getSplitBills(requireContext())
@@ -100,11 +111,31 @@ class SplitBillFragment : Fragment() {
     private fun clearForm() {
         binding.etDescription.text?.clear()
         binding.etAmount.text?.clear()
+        // reset date back to today
+        selectedDateMillis = System.currentTimeMillis()
+        binding.etDate.setText(formatDate(selectedDateMillis))
         loadPersons()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun setupDatePicker() {
+        binding.etDate.setText(formatDate(selectedDateMillis))
+        binding.etDate.setOnClickListener {
+            val cal = Calendar.getInstance().apply { timeInMillis = selectedDateMillis }
+            DatePickerDialog(requireContext(), { _, year, month, dayOfMonth ->
+                cal.set(year, month, dayOfMonth)
+                selectedDateMillis = cal.timeInMillis
+                binding.etDate.setText(formatDate(selectedDateMillis))
+            }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+        }
+    }
+
+    private fun formatDate(millis: Long): String {
+        val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+        return sdf.format(millis)
     }
 }
