@@ -10,6 +10,11 @@
         android:label="Home" />
 
     <fragment
+        android:id="@+id/transactionsFragment"
+        android:name="com.billshare.app.fragments.TransactionsFragment"
+        android:label="Transactions" />
+
+    <fragment
         android:id="@+id/splitBillFragment"
         android:name="com.billshare.app.fragments.SplitBillFragment"
         android:label="Split Bill" />

@@ -40,8 +40,15 @@ class SplitBillFragment : Fragment() {
         binding.btnAddSplitBill.setOnClickListener { saveSplitBill() }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // refresh list when returning from other screens
+        loadPersons()
+    }
+
     private fun loadPersons() {
         persons = DataManager.getPersons(requireContext())
+
 
         if (persons.isEmpty()) {
             Toast.makeText(requireContext(), "Please add people in the People tab first!", Toast.LENGTH_LONG).show()

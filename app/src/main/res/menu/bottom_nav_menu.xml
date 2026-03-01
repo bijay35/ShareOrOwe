@@ -7,14 +7,9 @@
         android:icon="@android:drawable/ic_menu_today"/>
 
     <item
-        android:id="@+id/splitBillFragment"
-        android:title="Split"
-        android:icon="@android:drawable/ic_menu_share"/>
-
-    <item
-        android:id="@+id/iouFragment"
-        android:title="IOU"
-        android:icon="@android:drawable/ic_menu_add"/>
+        android:id="@+id/transactionsFragment"
+        android:title="Transaction"
+        android:icon="@android:drawable/ic_menu_send"/>
 
     <item
         android:id="@+id/peopleFragment"

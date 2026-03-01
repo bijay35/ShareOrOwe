@@ -8,7 +8,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="🤝 I Owe You"
+        android:text="🤝 Record IOU"
         android:textSize="22sp"
         android:textStyle="bold"
         android:paddingBottom="16dp" />
@@ -52,28 +52,36 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Who paid (the payer)?"
+        android:text="Who is the other person?"
         android:textStyle="bold"
         android:paddingBottom="4dp"/>
 
     <Spinner
-        android:id="@+id/spinner_paid_by"
+        android:id="@+id/spinner_person"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="12dp"/>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Who should pay them back?"
-        android:textStyle="bold"
-        android:paddingBottom="4dp"/>
-
-    <Spinner
-        android:id="@+id/spinner_owed_to"
+    <RadioGroup
+        android:id="@+id/radio_group_direction"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"/>
+        android:orientation="horizontal"
+        android:paddingBottom="12dp">
+
+        <RadioButton
+            android:id="@+id/radio_i_owe"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="I owe them" />
+
+        <RadioButton
+            android:id="@+id/radio_they_owe"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="They owe me"
+            android:layout_marginStart="16dp" />
+    </RadioGroup>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_add_i_o_u"
@@ -82,18 +90,5 @@
         android:text="Add IOU"
         android:layout_marginBottom="16dp"/>
 
-    <TextView
-        android:id="@+id/tv_empty"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="No IOUs yet."
-        android:gravity="center"
-        android:textColor="#888"
-        android:visibility="gone" />
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recycler_i_o_us"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
 
 </LinearLayout>
