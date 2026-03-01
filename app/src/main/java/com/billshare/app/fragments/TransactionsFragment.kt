@@ -32,19 +32,43 @@ class TransactionsFragment : Fragment() {
                     0 -> showFragment(SplitBillFragment())
                     1 -> showFragment(IOUFragment())
                 }
+                // ensure container redraws after switching
+                binding.container.requestLayout()
             }
 
             override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
             override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
         })
 
-        binding.tabLayout.getTabAt(0)?.select()
+        // delay selecting first tab until layout is ready
+        binding.tabLayout.post { binding.tabLayout.getTabAt(0)?.select() }
+        // also defer first fragment attachment until container has layout
+        binding.container.post { showFragment(SplitBillFragment()) }
     }
 
     private fun showFragment(fragment: Fragment) {
+        // use commitNow to ensure fragment is added immediately and visible
         childFragmentManager.beginTransaction()
             .replace(binding.container.id, fragment)
-            .commit()
+            .commitNow()
+        binding.container.visibility = View.VISIBLE
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // ensure split fragment exists when fragment becomes visible
+        if (childFragmentManager.fragments.isEmpty()) {
+            binding.container.post { showFragment(SplitBillFragment()) }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // reselect current tab to refresh fragment (covers layout/timing issues)
+        binding.tabLayout.post {
+            val pos = binding.tabLayout.selectedTabPosition
+            binding.tabLayout.getTabAt(pos)?.select()
+        }
     }
 
     override fun onDestroyView() {
