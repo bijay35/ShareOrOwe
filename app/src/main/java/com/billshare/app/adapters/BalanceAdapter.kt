@@ -6,9 +6,12 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.billshare.app.databinding.ItemBalanceBinding
 import com.billshare.app.models.Balance
+import com.billshare.app.models.Person
 
-class BalanceAdapter(private val balances: List<Balance>) :
-    RecyclerView.Adapter<BalanceAdapter.ViewHolder>() {
+class BalanceAdapter(
+    private val balances: List<Balance>,
+    private val onPersonClick: (Person) -> Unit
+) : RecyclerView.Adapter<BalanceAdapter.ViewHolder>() {
 
     inner class ViewHolder(val binding: ItemBalanceBinding) : RecyclerView.ViewHolder(binding.root)
 
@@ -20,6 +23,8 @@ class BalanceAdapter(private val balances: List<Balance>) :
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val balance = balances[position]
         holder.binding.tvPersonName.text = balance.person.name
+        // make entire card clickable (or just name)
+        holder.binding.root.setOnClickListener { onPersonClick(balance.person) }
         val amount = balance.netAmount
         when {
             amount > 0 -> {
