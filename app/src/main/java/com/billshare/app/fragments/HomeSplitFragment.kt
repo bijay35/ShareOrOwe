@@ -54,9 +54,20 @@ class HomeSplitFragment : Fragment() {
     }
 
     private fun setupSplitFilter() {
-        val allPersons = DataManager.getPersons(requireContext())
+        var allPersons = DataManager.getPersons(requireContext())
         val current = DataManager.getCurrentUser(requireContext())
-        // exclude current user from dropdown options
+        
+        // Ensure current user is in the people list
+        if (current != null) {
+            val userExists = allPersons.any { it.id == current.id }
+            if (!userExists) {
+                allPersons = allPersons.toMutableList()
+                allPersons.add(current)
+                DataManager.savePersons(requireContext(), allPersons)
+            }
+        }
+        
+        // exclude current user from dropdown options for filtering (to show transactions with others)
         val persons = if (current != null) allPersons.filter { it.id != current.id } else allPersons
         val names = mutableListOf("All people")
         names.addAll(persons.map { it.name })

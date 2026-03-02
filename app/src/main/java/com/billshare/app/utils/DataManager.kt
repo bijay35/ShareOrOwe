@@ -137,7 +137,7 @@ object DataManager {
                 val involvesMe = bill.paidBy.id == me.id || bill.participants.any { it.id == me.id }
                 if (involvesPerson && involvesMe && !bill.isSettled) {
                     sb.append("- ${bill.description}: total ${bill.totalAmount}, paid by ${bill.paidBy.name}\n")
-                    // adjust net: positive means person owes me
+                    // adjust net: positive means current user is owed money (person owes current user)
                     val share = bill.totalAmount / bill.participants.size
                     when {
                         bill.paidBy.id == me.id && bill.participants.any { it.id == person.id } -> net += share
