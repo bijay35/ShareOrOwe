@@ -3,6 +3,7 @@ package com.billshare.app.utils
 import android.content.Context
 import com.billshare.app.models.IOU
 import com.billshare.app.models.Person
+import com.billshare.app.models.Settlement
 import com.billshare.app.models.SplitBill
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -13,6 +14,7 @@ object DataManager {
     private const val KEY_PERSONS = "persons"
     private const val KEY_SPLIT_BILLS = "split_bills"
     private const val KEY_IOUS = "ious"
+    private const val KEY_SETTLEMENTS = "settlements"
     private const val KEY_CURRENT_USER = "current_user"
     private val gson = Gson()
 
@@ -52,6 +54,54 @@ object DataManager {
         return gson.fromJson(json, type)
     }
 
+    // settlement management -------------------------------------------------
+    
+    fun saveSettlements(context: Context, settlements: List<Settlement>) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_SETTLEMENTS, gson.toJson(settlements)).apply()
+    }
+
+    fun getSettlements(context: Context): MutableList<Settlement> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val json = prefs.getString(KEY_SETTLEMENTS, null) ?: return mutableListOf()
+        val type = object : TypeToken<MutableList<Settlement>>() {}.type
+        return gson.fromJson(json, type)
+    }
+
+    fun addSettlement(context: Context, settlement: Settlement) {
+        val settlements = getSettlements(context)
+        settlements.add(settlement)
+        saveSettlements(context, settlements)
+    }
+
+    fun removeSettlement(context: Context, settlementId: String) {
+        val settlements = getSettlements(context)
+        settlements.removeAll { it.id == settlementId }
+        saveSettlements(context, settlements)
+    }
+
+    fun getSettlementsForBill(context: Context, billId: String): List<Settlement> {
+        return getSettlements(context).filter { it.billId == billId }
+    }
+
+    fun getSettlementsForPerson(context: Context, personId: String): List<Settlement> {
+        return getSettlements(context).filter { it.personId == personId }
+    }
+
+    fun isBillFullySettled(context: Context, bill: SplitBill): Boolean {
+        val settlements = getSettlementsForBill(context, bill.id)
+        val settledPersons = settlements.map { it.personId }.toSet()
+        
+        // A bill is fully settled when all non-payer participants have settled
+        val requiredSettlements = bill.participants.filter { it.id != bill.paidBy.id }.map { it.id }.toSet()
+        return requiredSettlements.all { it in settledPersons }
+    }
+
+    fun isPersonSettledForBill(context: Context, billId: String, personId: String): Boolean {
+        val settlements = getSettlementsForBill(context, billId)
+        return settlements.any { it.personId == personId }
+    }
+
     // current user handling
     fun saveCurrentUser(context: Context, person: Person) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -66,7 +116,7 @@ object DataManager {
 
     fun clearData(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().remove(KEY_PERSONS).remove(KEY_SPLIT_BILLS).remove(KEY_IOUS).apply()
+        prefs.edit().remove(KEY_PERSONS).remove(KEY_SPLIT_BILLS).remove(KEY_IOUS).remove(KEY_SETTLEMENTS).apply()
     }
 
     fun deleteAccount(context: Context) {
@@ -81,6 +131,7 @@ object DataManager {
         val persons: List<Person>,
         val splitBills: List<SplitBill>,
         val ious: List<IOU>,
+        val settlements: List<Settlement>,
         val currentUser: Person? = null
     )
 
@@ -93,6 +144,7 @@ object DataManager {
             persons = getPersons(context),
             splitBills = getSplitBills(context),
             ious = getIOUs(context),
+            settlements = getSettlements(context),
             currentUser = getCurrentUser(context)
         )
         return gson.toJson(wrapper)
@@ -116,6 +168,7 @@ object DataManager {
             savePersons(context, wrapper.persons)
             saveSplitBills(context, wrapper.splitBills)
             saveIOUs(context, wrapper.ious)
+            saveSettlements(context, wrapper.settlements)
             
             // Set current user if present in imported data
             wrapper.currentUser?.let { user ->

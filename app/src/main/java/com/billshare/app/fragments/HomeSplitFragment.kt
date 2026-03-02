@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.billshare.app.adapters.SplitSummaryAdapter
 import com.billshare.app.databinding.FragmentHomeSplitBinding
 import com.billshare.app.models.Person
+import com.billshare.app.models.Settlement
 import com.billshare.app.models.SplitBill
 import com.billshare.app.utils.DataManager
 import androidx.navigation.fragment.findNavController
@@ -113,8 +114,8 @@ class HomeSplitFragment : Fragment() {
 
         // status filtering
         when (binding.spinnerStatus.selectedItem as String) {
-            "Settled" -> filtered = filtered.filter { it.isSettled }
-            "Unsettled" -> filtered = filtered.filter { !it.isSettled }
+            "Settled" -> filtered = filtered.filter { DataManager.isBillFullySettled(context, it) }
+            "Unsettled" -> filtered = filtered.filter { !DataManager.isBillFullySettled(context, it) }
             // "All" does nothing
         }
 
@@ -161,6 +162,8 @@ class HomeSplitFragment : Fragment() {
             }, onPayerClick = { payerId ->
                 val bundle = Bundle().apply { putString("personId", payerId) }
                 findNavController().navigate(R.id.personDetailsFragment, bundle)
+            }, onShowDetails = { bill ->
+                showBillDetails(bill)
             })
         }
     }
@@ -174,55 +177,137 @@ class HomeSplitFragment : Fragment() {
             DataManager.getPersons(requireContext()).find { it.id == selectedPersonId }
         } else null
         
-        val options = if (selectedPerson != null) {
-            arrayOf("Settle this bill only", "Settle all bills with ${selectedPerson.name}")
-        } else {
-            arrayOf("Settle this bill only")
+        val options = when {
+            selectedPerson != null && selectedPerson.id != current.id -> {
+                // Different person selected - can settle for them or settle all with them
+                arrayOf("Settle ${selectedPerson.name}'s share", "Settle all ${selectedPerson.name}'s shares")
+            }
+            selectedPerson != null && selectedPerson.id == current.id -> {
+                // Current user selected - settle their share or all their shares
+                arrayOf("Settle your share", "Settle all your shares")
+            }
+            else -> {
+                // No specific person selected - settle your share
+                arrayOf("Settle your share")
+            }
         }
         
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Settle Options")
             .setItems(options) { _, which ->
-                when (which) {
-                    0 -> settleSingleBill(bill)
-                    1 -> selectedPerson?.let { settleAllBillsWithPerson(it) }
+                when {
+                    selectedPerson != null && which == 0 -> {
+                        // Settle specific person's share for this bill
+                        settlePersonShareForBill(bill, selectedPerson)
+                    }
+                    selectedPerson != null && which == 1 -> {
+                        // Settle all shares for selected person
+                        settleAllSharesForPerson(selectedPerson)
+                    }
+                    else -> {
+                        // Settle current user's share for this bill
+                        settleCurrentUsersShareForBill(bill)
+                    }
                 }
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
     
-    private fun settleSingleBill(bill: SplitBill) {
-        val all = DataManager.getSplitBills(requireContext())
-        val idx = all.indexOfFirst { it.id == bill.id }
-        if (idx >= 0) {
-            all[idx] = all[idx].copy(isSettled = true)
-            DataManager.saveSplitBills(requireContext(), all)
-            loadSplitBills()
+    private fun settleCurrentUsersShareForBill(bill: SplitBill) {
+        val current = DataManager.getCurrentUser(requireContext()) ?: return
+        
+        // Only settle if current user is a participant (not the payer)
+        if (bill.paidBy.id == current.id) {
+            // Current user paid the bill, they don't need to settle anything
+            return
         }
+        
+        // Create a settlement for the current user's share
+        val settlement = Settlement(
+            billId = bill.id,
+            personId = current.id,
+            settledAmount = bill.sharePerPerson
+        )
+        
+        DataManager.addSettlement(requireContext(), settlement)
+        loadSplitBills()
     }
     
-    private fun settleAllBillsWithPerson(person: Person) {
-        val current = DataManager.getCurrentUser(requireContext()) ?: return
+    private fun settlePersonShareForBill(bill: SplitBill, person: Person) {
+        // Only settle if the person is a participant (not the payer)
+        if (bill.paidBy.id == person.id) {
+            return
+        }
+        
+        // Create a settlement for the person's share
+        val settlement = Settlement(
+            billId = bill.id,
+            personId = person.id,
+            settledAmount = bill.sharePerPerson
+        )
+        
+        DataManager.addSettlement(requireContext(), settlement)
+        loadSplitBills()
+    }
+    
+    private fun settleAllSharesForPerson(person: Person) {
         val all = DataManager.getSplitBills(requireContext())
         
-        // Find all unsettled bills involving current user and selected person
-        val billsToSettle = all.filter { !it.isSettled &&
-            ((it.paidBy.id == current.id && it.participants.any { p -> p.id == person.id }) ||
-             (it.paidBy.id == person.id && it.participants.any { p -> p.id == current.id }))
+        // Find all bills where the person owes money (is a participant but not payer)
+        val billsWherePersonOwes = all.filter { bill ->
+            bill.paidBy.id != person.id && 
+            bill.participants.any { p -> p.id == person.id } &&
+            !DataManager.isPersonSettledForBill(requireContext(), bill.id, person.id)
         }
         
-        if (billsToSettle.isNotEmpty()) {
-            val updatedBills = all.map { bill ->
-                if (billsToSettle.any { it.id == bill.id }) {
-                    bill.copy(isSettled = true)
-                } else {
-                    bill
-                }
-            }
-            DataManager.saveSplitBills(requireContext(), updatedBills)
-            loadSplitBills()
+        // Create settlements for all these bills
+        billsWherePersonOwes.forEach { bill ->
+            val settlement = Settlement(
+                billId = bill.id,
+                personId = person.id,
+                settledAmount = bill.sharePerPerson
+            )
+            DataManager.addSettlement(requireContext(), settlement)
         }
+        
+        loadSplitBills()
+    }
+
+    private fun showBillDetails(bill: SplitBill) {
+        val context = requireContext()
+        val current = DataManager.getCurrentUser(context) ?: return
+        
+        // Build detailed information
+        val details = StringBuilder()
+        details.append("Bill Details\n")
+        details.append("=============\n\n")
+        details.append("Description: ${bill.description}\n")
+        details.append("Total Amount: $${"%.2f".format(bill.totalAmount)}\n")
+        details.append("Paid by: ${bill.paidBy.name}\n")
+        details.append("Share per person: $${"%.2f".format(bill.sharePerPerson)}\n\n")
+        
+        details.append("Participants & Settlement Status:\n")
+        details.append("---------------------------------\n")
+        
+        bill.participants.forEach { participant ->
+            val isSettled = DataManager.isPersonSettledForBill(context, bill.id, participant.id)
+            val status = if (isSettled) "✓ Settled" else "⏳ Pending"
+            val isPayer = participant.id == bill.paidBy.id
+            val role = if (isPayer) " (Paid)" else " (Owes $${"%.2f".format(bill.sharePerPerson)})"
+            
+            details.append("${participant.name}$role - $status\n")
+        }
+        
+        // Show overall settlement status
+        val isFullySettled = DataManager.isBillFullySettled(context, bill)
+        details.append("\nOverall Status: ${if (isFullySettled) "✓ Fully Settled" else "⏳ Partially Settled"}")
+        
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Bill Information")
+            .setMessage(details.toString())
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     private fun calculateSplitTotal(bills: List<SplitBill>, filterId: String?): String? {

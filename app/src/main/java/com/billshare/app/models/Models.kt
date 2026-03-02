@@ -37,6 +37,15 @@ data class IOU(
     var isSettled: Boolean = false
 ) : Parcelable
 
+@Parcelize
+data class Settlement(
+    val id: String = UUID.randomUUID().toString(),
+    val billId: String, // SplitBill ID
+    val personId: String, // Person who settled
+    val settledAmount: Double, // Amount this person settled
+    val date: Long = System.currentTimeMillis()
+) : Parcelable
+
 data class Balance(
     val person: Person,
     val netAmount: Double  // positive = is owed money, negative = owes money
