@@ -80,7 +80,8 @@ object DataManager {
     private data class ExportWrapper(
         val persons: List<Person>,
         val splitBills: List<SplitBill>,
-        val ious: List<IOU>
+        val ious: List<IOU>,
+        val currentUser: Person? = null
     )
 
     /**
@@ -91,7 +92,8 @@ object DataManager {
         val wrapper = ExportWrapper(
             persons = getPersons(context),
             splitBills = getSplitBills(context),
-            ious = getIOUs(context)
+            ious = getIOUs(context),
+            currentUser = getCurrentUser(context)
         )
         return gson.toJson(wrapper)
     }
@@ -100,20 +102,50 @@ object DataManager {
      * Attempt to import the provided JSON string as an entire dataset.  Returns
      * true on success or false if the payload could not be parsed.
      * On success the current preferences are overwritten.
+     * If the imported data contains a current user, it will be set as the current user.
      */
     fun importAllData(context: Context, json: String): Boolean {
         return try {
             val type = object : TypeToken<ExportWrapper>() {}.type
             val wrapper: ExportWrapper = gson.fromJson(json, type)
-            // overwrite everything
+            
+            // Clear all existing data first
+            clearData(context)
+            
+            // Import all new data
             savePersons(context, wrapper.persons)
             saveSplitBills(context, wrapper.splitBills)
             saveIOUs(context, wrapper.ious)
+            
+            // Set current user if present in imported data
+            wrapper.currentUser?.let { user ->
+                // Find the matching person in the imported persons list
+                val matchingPerson = wrapper.persons.find { it.id == user.id }
+                if (matchingPerson != null) {
+                    saveCurrentUser(context, matchingPerson)
+                } else {
+                    // If no matching person found, try to find by name
+                    val nameMatchingPerson = wrapper.persons.find { it.name.equals(user.name, ignoreCase = true) }
+                    if (nameMatchingPerson != null) {
+                        saveCurrentUser(context, nameMatchingPerson)
+                    }
+                }
+            }
+            
             true
         } catch (e: Exception) {
             e.printStackTrace()
             false
         }
+    }
+
+    /**
+     * Check if the app has any existing data (persons, bills, or IOUs)
+     */
+    fun hasExistingData(context: Context): Boolean {
+        return getPersons(context).isNotEmpty() || 
+               getSplitBills(context).isNotEmpty() || 
+               getIOUs(context).isNotEmpty()
     }
 
     /**
