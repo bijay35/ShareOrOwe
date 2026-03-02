@@ -64,9 +64,17 @@ class PeopleFragment : Fragment() {
         binding.recyclerPeople.adapter = adapter
 
         persons.clear()
-        val all = DataManager.getPersons(requireContext())
+        var all = DataManager.getPersons(requireContext())
         val current = DataManager.getCurrentUser(requireContext())
+        
+        // Ensure current user is in the people list
         if (current != null) {
+            val userExists = all.any { it.id == current.id }
+            if (!userExists) {
+                all = all.toMutableList()
+                all.add(current)
+                DataManager.savePersons(requireContext(), all)
+            }
             persons.addAll(all.filter { it.id != current.id })
         } else {
             persons.addAll(all)

@@ -49,8 +49,20 @@ class IOUFragment : Fragment() {
     }
 
     private fun loadPersons() {
-        val all = DataManager.getPersons(requireContext())
+        var all = DataManager.getPersons(requireContext())
         val current = DataManager.getCurrentUser(requireContext())
+        
+        // Ensure current user is in the people list
+        if (current != null) {
+            val userExists = all.any { it.id == current.id }
+            if (!userExists) {
+                all = all.toMutableList()
+                all.add(current)
+                DataManager.savePersons(requireContext(), all)
+            }
+        }
+        
+        // Exclude current user from selection - you need another person for IOU
         persons = if (current != null) all.filter { it.id != current.id }.toMutableList() else all.toMutableList()
         if (persons.isEmpty()) {
             Toast.makeText(requireContext(), "Need at least one other person to record an IOU", Toast.LENGTH_LONG).show()
@@ -113,13 +125,7 @@ class IOUFragment : Fragment() {
         ious.add(iou)
         DataManager.saveIOUs(requireContext(), ious)
         Toast.makeText(requireContext(), "${paidBy.name} owes ${owedTo.name} $" + "%.2f".format(amount), Toast.LENGTH_LONG).show()
-        binding.etDescription.text?.clear()
-        binding.etAmount.text?.clear()
-        selectedDateMillis = System.currentTimeMillis()
-        binding.etDate.setText(formatDate(selectedDateMillis))
-        binding.spinnerPerson.setSelection(0)
-        binding.radioGroupDirection.clearCheck()
-        owesDirection = null
+        clearForm()
     }
 
     override fun onDestroyView() {
@@ -137,6 +143,16 @@ class IOUFragment : Fragment() {
                 binding.etDate.setText(formatDate(selectedDateMillis))
             }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
         }
+    }
+
+    private fun clearForm() {
+        binding.etDescription.text?.clear()
+        binding.etAmount.text?.clear()
+        selectedDateMillis = System.currentTimeMillis()
+        binding.etDate.setText(formatDate(selectedDateMillis))
+        binding.spinnerPerson.setSelection(0)
+        binding.radioGroupDirection.clearCheck()
+        owesDirection = null
     }
 
     private fun formatDate(millis: Long): String {

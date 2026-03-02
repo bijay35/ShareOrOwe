@@ -48,7 +48,16 @@ class SplitBillFragment : Fragment() {
 
     private fun loadPersons() {
         persons = DataManager.getPersons(requireContext())
-
+        
+        // Ensure current user is in the people list
+        val current = DataManager.getCurrentUser(requireContext())
+        if (current != null) {
+            val userExists = persons.any { it.id == current.id }
+            if (!userExists) {
+                persons.add(current)
+                DataManager.savePersons(requireContext(), persons)
+            }
+        }
 
         if (persons.isEmpty()) {
             Toast.makeText(requireContext(), "Please add people in the People tab first!", Toast.LENGTH_LONG).show()
@@ -59,10 +68,13 @@ class SplitBillFragment : Fragment() {
         val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, names)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.spinnerPaidBy.adapter = adapter
+        
         // default selection to current user if present
-        DataManager.getCurrentUser(requireContext())?.let { current ->
+        if (current != null) {
             val idx = persons.indexOfFirst { it.id == current.id }
-            if (idx >= 0) binding.spinnerPaidBy.setSelection(idx)
+            if (idx >= 0) {
+                binding.spinnerPaidBy.setSelection(idx)
+            }
         }
 
         // Dynamically add checkboxes for participants
@@ -71,6 +83,7 @@ class SplitBillFragment : Fragment() {
         persons.forEach { person ->
             val checkBox = CheckBox(requireContext())
             checkBox.text = person.name
+            // default selection: select all participants including current user
             checkBox.isChecked = true
             selectedParticipants.add(person)
             checkBox.setOnCheckedChangeListener { _, isChecked ->
