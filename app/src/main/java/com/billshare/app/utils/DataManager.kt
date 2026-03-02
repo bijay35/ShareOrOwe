@@ -6,6 +6,7 @@ import com.billshare.app.models.Person
 import com.billshare.app.models.SplitBill
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlin.math.abs
 
 object DataManager {
     private const val PREFS_NAME = "BillSharePrefs"
@@ -127,50 +128,114 @@ object DataManager {
         sb.append("Report for ${me.name} and ${person.name}\n")
         sb.append("=======================================\n\n")
 
-        var net = 0.0
-
+        // STEP 1: FILTER RELEVANT BILLS
         val splits = getSplitBills(context)
-        if (splits.isNotEmpty()) {
-            sb.append("Split bills:\n")
-            for (bill in splits) {
-                val involvesPerson = bill.paidBy.id == person.id || bill.participants.any { it.id == person.id }
-                val involvesMe = bill.paidBy.id == me.id || bill.participants.any { it.id == me.id }
-                if (involvesPerson && involvesMe && !bill.isSettled) {
-                    sb.append("- ${bill.description}: total ${bill.totalAmount}, paid by ${bill.paidBy.name}\n")
-                    // adjust net: positive means current user is owed money (person owes current user)
-                    val share = bill.totalAmount / bill.participants.size
-                    when {
-                        bill.paidBy.id == me.id && bill.participants.any { it.id == person.id } -> net += share
-                        bill.paidBy.id == person.id && bill.participants.any { it.id == me.id } -> net -= share
-                        // if paid by third party, ignore for net
+        val relevantSplits = splits.filter { 
+            (it.paidBy.id == me.id || it.paidBy.id == person.id) &&
+            (it.participants.any { p -> p.id == me.id } && it.participants.any { p -> p.id == person.id }) &&
+            !it.isSettled 
+        }
+
+        // Group splits by participant count
+        val splitsByPeopleCount = relevantSplits.groupBy { it.participants.size }
+
+        var bijayOwesKamalFromSplits = 0.0
+        var kamalOwesBijayFromSplits = 0.0
+
+        // Process each group separately
+        splitsByPeopleCount.forEach { (_, splitsInGroup) ->
+            val participantNames = splitsInGroup.first().participants.map { it.name }.let { names ->
+                if (names.size > 2) names.dropLast(1).joinToString(", ") + " & " + names.last()
+                else names.joinToString(" & ")
+            }
+            sb.append("Split bills: ($participantNames)\n")
+            
+            var splitCount = 1
+            for (bill in splitsInGroup) {
+                sb.append("${splitCount++}. ${bill.description}: $${"%.2f".format(bill.totalAmount)} - (Paid by ${bill.paidBy.name})\n")
+                
+                // STEP 2: CALCULATE SPLIT PORTIONS
+                val share = bill.totalAmount / bill.participants.size
+                
+                // STEP 3: CALCULATE SPLIT BALANCES
+                when {
+                    // I paid and person participated
+                    bill.paidBy.id == me.id && bill.participants.any { it.id == person.id } -> {
+                        kamalOwesBijayFromSplits += share
+                    }
+                    // Person paid and I participated  
+                    bill.paidBy.id == person.id && bill.participants.any { it.id == me.id } -> {
+                        bijayOwesKamalFromSplits += share
+                    }
+                    // Multi-person bills (>2 participants) - only consider our portion
+                    bill.participants.size > 2 -> {
+                        when {
+                            bill.paidBy.id == me.id && bill.participants.any { it.id == person.id } -> {
+                                kamalOwesBijayFromSplits += share
+                            }
+                            bill.paidBy.id == person.id && bill.participants.any { it.id == me.id } -> {
+                                bijayOwesKamalFromSplits += share
+                            }
+                        }
                     }
                 }
             }
-            sb.append("\n")
-        }
-
-        val ious = getIOUs(context)
-        if (ious.isNotEmpty()) {
-            sb.append("Owe :\n")
-            for (iou in ious) {
-                val involvesPerson = iou.paidBy.id == person.id || iou.owedTo.id == person.id
-                val involvesMe = iou.paidBy.id == me.id || iou.owedTo.id == me.id
-                if (involvesPerson && involvesMe && !iou.isSettled) {
-                    sb.append("- ${iou.description}: ${iou.amount}, paid by ${iou.paidBy.name}\n")
-                    if (iou.paidBy.id == me.id && iou.owedTo.id == person.id) net += iou.amount
-                    if (iou.paidBy.id == person.id && iou.owedTo.id == me.id) net -= iou.amount
+            
+            // Show group summary
+            val groupBalance = if (bijayOwesKamalFromSplits > kamalOwesBijayFromSplits) {
+                bijayOwesKamalFromSplits - kamalOwesBijayFromSplits
+            } else {
+                kamalOwesBijayFromSplits - bijayOwesKamalFromSplits
+            }
+            
+            if (groupBalance > 0.005) {
+                if (bijayOwesKamalFromSplits > kamalOwesBijayFromSplits) {
+                    sb.append("# ${me.name} owes ${person.name} $${"%.2f".format(groupBalance)}\n")
+                } else {
+                    sb.append("# ${person.name} owes ${me.name} $${"%.2f".format(groupBalance)}\n")
                 }
             }
             sb.append("\n")
         }
 
-        // final net summary
+        // STEP 4: ADD DIRECT OWES
+        val ious = getIOUs(context)
+        val relevantIOUS = ious.filter { 
+            ((it.paidBy.id == me.id && it.owedTo.id == person.id) || 
+             (it.paidBy.id == person.id && it.owedTo.id == me.id)) &&
+            !it.isSettled 
+        }
+        
+        var bijayOwesKamalDirect = 0.0
+        var kamalOwesBijayDirect = 0.0
+
+        // Display IOU transactions
+        if (relevantIOUS.isNotEmpty()) {
+            sb.append("Owe :\n")
+            var oweCount = 1
+            for (iou in relevantIOUS) {
+                sb.append("${oweCount++}. ${iou.description}: $${"%.2f".format(iou.amount)} - (${iou.paidBy.name} owes ${iou.owedTo.name})\n")
+                
+                // Calculate direct owes
+                when {
+                    iou.paidBy.id == me.id && iou.owedTo.id == person.id -> bijayOwesKamalDirect += iou.amount
+                    iou.paidBy.id == person.id && iou.owedTo.id == me.id -> kamalOwesBijayDirect += iou.amount
+                }
+            }
+            sb.append("\n")
+        }
+
+        // STEP 5: CALCULATE NET BALANCE
+        val totalBijayOwes = bijayOwesKamalFromSplits + bijayOwesKamalDirect
+        val totalKamalOwes = kamalOwesBijayFromSplits + kamalOwesBijayDirect
+        val netBalance = totalBijayOwes - totalKamalOwes
+
         sb.append("Net balance:\n")
         sb.append(
             when {
-                net > 0 -> "${person.name} owes ${me.name} ${"%.2f".format(net)}\n"
-                net < 0 -> "${me.name} owes ${person.name} ${"%.2f".format(-net)}\n"
-                else -> "Even.\n"
+                netBalance > 0.005 -> "${me.name} owes ${person.name} $${"%.2f".format(netBalance)}\n"
+                netBalance < -0.005 -> "${person.name} owes ${me.name} $${"%.2f".format(abs(netBalance))}\n"
+                else -> "Balance is settled.\n"
             }
         )
 

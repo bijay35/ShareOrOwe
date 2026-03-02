@@ -1,0 +1,63 @@
+Test Case 1: Split Bills
+Current: Bijay, Person: Kamal
+Bill: $56, paid by Bijay, participants: [Bijay, Kamal]
+
+Expected: Kamal owes Bijay $28
+Corrected Logic:
+- involvesPerson = true (Kamal is participant)
+- involvesMe = true (Bijay is payer + participant)
+- bill.paidBy.id == me.id (true) && participants.any { it.id == person.id } (true) && person.id != me.id (true) -> net += 28
+Result: net += 28 ✓
+
+Test Case 2: Split Bills  
+Current: Bijay, Person: Kamal
+Bill: $89, paid by Kamal, participants: [Bijay, Kamal]
+
+Expected: Bijay owes Kamal $44.50
+Corrected Logic:
+- involvesPerson = true (Kamal is payer)
+- involvesMe = true (Bijay is participant)  
+- bill.paidBy.id == person.id (true) && participants.any { it.id == me.id } (true) && me.id != person.id (true) -> net -= 44.50
+Result: net -= 44.50 ✓
+
+Test Case 3: IOU
+Current: Bijay, Person: Kamal
+IOU: $99, paid by Bijay, owed to Kamal
+
+Expected: Kamal owes Bijay $99
+Corrected Logic:
+- involvesPerson = true (Kamal is owedTo)
+- involvesMe = true (Bijay is paidBy)
+- iou.paidBy.id == me.id (true) && iou.owedTo.id == person.id (true) -> net += 99
+Result: net += 99 ✓
+
+Test Case 4: IOU
+Current: Bijay, Person: Kamal  
+IOU: $12, paid by Kamal, owed to Bijay
+
+Expected: Bijay owes Kamal $12
+Corrected Logic:
+- involvesPerson = true (Kamal is paidBy)
+- involvesMe = true (Bijay is owedTo)
+- iou.paidBy.id == person.id (true) && iou.owedTo.id == me.id (true) -> net -= 12
+Result: net -= 12 ✓
+
+Manual Calculation from Bijay's perspective:
+- Split 1: +$28 (Kamal owes Bijay)
+- Split 2: -$44.50 (Bijay owes Kamal)  
+- IOU 1: +$99 (Kamal owes Bijay)
+- IOU 2: -$12 (Bijay owes Kamal)
+- Total: +$28 - $44.50 + $99 - $12 = +$70.50
+
+Expected result shows $103.50, but calculation shows $70.50
+Difference: $33.00
+
+Where could the extra $33 come from?
+Maybe the split calculation should be different?
+If Split 1: $56 with 2 people, each share is $28
+If Split 2: $89 with 2 people, each share is $44.50
+
+Wait, maybe the issue is that when Bijay pays $56, Kamal owes $28, but Bijay also "recovers" $28 for himself?
+No, that doesn't make sense.
+
+Let me check if there's an error in the expected result calculation.
