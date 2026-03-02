@@ -10,10 +10,12 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.billshare.app.adapters.SplitSummaryAdapter
 import com.billshare.app.databinding.FragmentHomeSplitBinding
+import com.billshare.app.models.Person
 import com.billshare.app.models.SplitBill
 import com.billshare.app.utils.DataManager
 import androidx.navigation.fragment.findNavController
 import com.billshare.app.R
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class HomeSplitFragment : Fragment() {
 
@@ -152,13 +154,7 @@ class HomeSplitFragment : Fragment() {
             binding.tvEmptySplit.visibility = View.GONE
             binding.recyclerSplit.visibility = View.VISIBLE
             binding.recyclerSplit.adapter = SplitSummaryAdapter(filtered, onSettle = { bill ->
-                val all = DataManager.getSplitBills(requireContext())
-                val idx = all.indexOfFirst { it.id == bill.id }
-                if (idx >= 0) {
-                    all[idx].isSettled = true
-                    DataManager.saveSplitBills(requireContext(), all)
-                    loadSplitBills()
-                }
+                showSettleDialog(bill, filtered)
             }, onItemClick = { bill ->
                 val bundle = Bundle().apply { putString("billId", bill.id) }
                 findNavController().navigate(R.id.billDetailsFragment, bundle)
@@ -166,6 +162,66 @@ class HomeSplitFragment : Fragment() {
                 val bundle = Bundle().apply { putString("personId", payerId) }
                 findNavController().navigate(R.id.personDetailsFragment, bundle)
             })
+        }
+    }
+
+    private fun showSettleDialog(bill: SplitBill, currentFilteredBills: List<SplitBill>) {
+        val current = DataManager.getCurrentUser(requireContext()) ?: return
+        
+        // Get the selected person from dropdown
+        val selectedPersonId = binding.spinnerFilter.tag as? String
+        val selectedPerson = if (selectedPersonId != null) {
+            DataManager.getPersons(requireContext()).find { it.id == selectedPersonId }
+        } else null
+        
+        val options = if (selectedPerson != null) {
+            arrayOf("Settle this bill only", "Settle all bills with ${selectedPerson.name}")
+        } else {
+            arrayOf("Settle this bill only")
+        }
+        
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Settle Options")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> settleSingleBill(bill)
+                    1 -> selectedPerson?.let { settleAllBillsWithPerson(it) }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    private fun settleSingleBill(bill: SplitBill) {
+        val all = DataManager.getSplitBills(requireContext())
+        val idx = all.indexOfFirst { it.id == bill.id }
+        if (idx >= 0) {
+            all[idx] = all[idx].copy(isSettled = true)
+            DataManager.saveSplitBills(requireContext(), all)
+            loadSplitBills()
+        }
+    }
+    
+    private fun settleAllBillsWithPerson(person: Person) {
+        val current = DataManager.getCurrentUser(requireContext()) ?: return
+        val all = DataManager.getSplitBills(requireContext())
+        
+        // Find all unsettled bills involving current user and selected person
+        val billsToSettle = all.filter { !it.isSettled &&
+            ((it.paidBy.id == current.id && it.participants.any { p -> p.id == person.id }) ||
+             (it.paidBy.id == person.id && it.participants.any { p -> p.id == current.id }))
+        }
+        
+        if (billsToSettle.isNotEmpty()) {
+            val updatedBills = all.map { bill ->
+                if (billsToSettle.any { it.id == bill.id }) {
+                    bill.copy(isSettled = true)
+                } else {
+                    bill
+                }
+            }
+            DataManager.saveSplitBills(requireContext(), updatedBills)
+            loadSplitBills()
         }
     }
 

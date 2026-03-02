@@ -10,9 +10,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.billshare.app.adapters.IOUAdapter
 import com.billshare.app.databinding.FragmentHomeOweBinding
 import com.billshare.app.models.IOU
+import com.billshare.app.models.Person
 import com.billshare.app.utils.DataManager
 import androidx.navigation.fragment.findNavController
 import com.billshare.app.R
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class HomeOweFragment : Fragment() {
     private var _binding: FragmentHomeOweBinding? = null
@@ -88,17 +90,21 @@ class HomeOweFragment : Fragment() {
             binding.tvEmptyIou.visibility = View.GONE
             binding.recyclerIouSummary.visibility = View.VISIBLE
             binding.recyclerIouSummary.adapter = IOUAdapter(ious, { iou ->
-                val all = DataManager.getIOUs(requireContext())
-                val idx = all.indexOfFirst { it.id == iou.id }
-                if (idx >= 0) {
-                    all[idx] = all[idx].copy(isSettled = true)
-                    DataManager.saveIOUs(requireContext(), all)
-                    loadIOUSummary()
-                }
+                showSettleDialog(iou, ious)
             }, onItemClick = { iou ->
                 val bundle = Bundle().apply { putString("iouId", iou.id) }
                 findNavController().navigate(R.id.iouDetailsFragment, bundle)
             })
+            
+            // Show calculation summary
+            val selectedPersonId = binding.spinnerFilter.tag as? String
+            val totalText = calculateIOUTotal(ious, selectedPersonId)
+            if (totalText != null) {
+                binding.tvIouTotal.text = totalText
+                binding.tvIouTotal.visibility = View.VISIBLE
+            } else {
+                binding.tvIouTotal.visibility = View.GONE
+            }
         }
     }
 
@@ -187,6 +193,85 @@ class HomeOweFragment : Fragment() {
             onSet(y, m, d)
         }, now.get(java.util.Calendar.YEAR), now.get(java.util.Calendar.MONTH), now.get(java.util.Calendar.DAY_OF_MONTH))
         dialog.show()
+    }
+
+    private fun showSettleDialog(iou: IOU, currentFilteredIOUS: List<IOU>) {
+        val current = DataManager.getCurrentUser(requireContext()) ?: return
+        
+        // Get the selected person from dropdown
+        val selectedPersonId = binding.spinnerFilter.tag as? String
+        val selectedPerson = if (selectedPersonId != null) {
+            DataManager.getPersons(requireContext()).find { it.id == selectedPersonId }
+        } else null
+        
+        val options = if (selectedPerson != null) {
+            arrayOf("Settle this IOU only", "Settle all IOUs with ${selectedPerson.name}")
+        } else {
+            arrayOf("Settle this IOU only")
+        }
+        
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Settle Options")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> settleSingleIOU(iou)
+                    1 -> selectedPerson?.let { settleAllIOUsWithPerson(it) }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    private fun settleSingleIOU(iou: IOU) {
+        val all = DataManager.getIOUs(requireContext())
+        val idx = all.indexOfFirst { it.id == iou.id }
+        if (idx >= 0) {
+            all[idx] = all[idx].copy(isSettled = true)
+            DataManager.saveIOUs(requireContext(), all)
+            loadIOUSummary()
+        }
+    }
+    
+    private fun settleAllIOUsWithPerson(person: Person) {
+        val current = DataManager.getCurrentUser(requireContext()) ?: return
+        val all = DataManager.getIOUs(requireContext())
+        
+        // Find all unsettled IOUs involving current user and selected person
+        val iousToSettle = all.filter { !it.isSettled &&
+            ((it.paidBy.id == current.id && it.owedTo.id == person.id) ||
+             (it.paidBy.id == person.id && it.owedTo.id == current.id))
+        }
+        
+        if (iousToSettle.isNotEmpty()) {
+            val updatedIOUS = all.map { iou ->
+                if (iousToSettle.any { it.id == iou.id }) {
+                    iou.copy(isSettled = true)
+                } else {
+                    iou
+                }
+            }
+            DataManager.saveIOUs(requireContext(), updatedIOUS)
+            loadIOUSummary()
+        }
+    }
+
+    private fun calculateIOUTotal(ious: List<IOU>, filterId: String?): String? {
+        if (filterId == null) return null
+        val current = DataManager.getCurrentUser(requireContext()) ?: return null
+        var net = 0.0
+        for (iou in ious) {
+            if (iou.paidBy.id == current.id && iou.owedTo.id == filterId) {
+                net += iou.amount
+            } else if (iou.paidBy.id == filterId && iou.owedTo.id == current.id) {
+                net -= iou.amount
+            }
+        }
+        val name = binding.spinnerFilter.selectedItem as? String ?: ""
+        return when {
+            net > 0 -> "You are owed $${"%.2f".format(net)} by $name"
+            net < 0 -> "You owe $${"%.2f".format(-net)} to $name"
+            else -> null
+        }
     }
 
     private fun resetFilters() {
