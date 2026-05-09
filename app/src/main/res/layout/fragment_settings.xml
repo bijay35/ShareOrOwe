@@ -33,6 +33,13 @@
             android:layout_height="wrap_content"
             android:text="Save" />
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switch_home_summary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Show home summary card"
+            android:layout_marginTop="16dp" />
+
         <!-- export / import -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_export_data"

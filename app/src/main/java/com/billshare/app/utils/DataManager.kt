@@ -16,7 +16,30 @@ object DataManager {
     private const val KEY_IOUS = "ious"
     private const val KEY_SETTLEMENTS = "settlements"
     private const val KEY_CURRENT_USER = "current_user"
+    private const val KEY_HOME_SUMMARY_VISIBLE = "home_summary_visible"
+    private const val KEY_NIGHT_MODE = "night_mode"
     private val gson = Gson()
+
+    fun isHomeSummaryVisible(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_HOME_SUMMARY_VISIBLE, true)
+    }
+
+    fun setHomeSummaryVisible(context: Context, visible: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_HOME_SUMMARY_VISIBLE, visible).apply()
+    }
+
+    /** Returns the saved night mode (one of AppCompatDelegate.MODE_NIGHT_*). Defaults to follow-system. */
+    fun getNightMode(context: Context): Int {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getInt(KEY_NIGHT_MODE, androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+    }
+
+    fun setNightMode(context: Context, mode: Int) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putInt(KEY_NIGHT_MODE, mode).apply()
+    }
 
     fun savePersons(context: Context, persons: List<Person>) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

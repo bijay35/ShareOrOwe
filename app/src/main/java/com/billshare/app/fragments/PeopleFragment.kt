@@ -7,11 +7,14 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.billshare.app.adapters.PersonAdapter
 import com.billshare.app.databinding.FragmentPeopleBinding
 import com.billshare.app.models.Person
 import com.billshare.app.utils.DataManager
+import com.billshare.app.utils.SwipeToDeleteCallback
+import com.google.android.material.snackbar.Snackbar
 
 class PeopleFragment : Fragment() {
 
@@ -45,6 +48,7 @@ class PeopleFragment : Fragment() {
                         persons.remove(person)
                         DataManager.savePersons(requireContext(), persons)
                         adapter.notifyDataSetChanged()
+                        refreshEmptyState()
                     }
                 }
                 .setNegativeButton("No", null)
@@ -63,11 +67,32 @@ class PeopleFragment : Fragment() {
         binding.recyclerPeople.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerPeople.adapter = adapter
 
+        val swipe = SwipeToDeleteCallback(
+            onSwiped = { pos ->
+                val person = persons.getOrNull(pos) ?: return@SwipeToDeleteCallback
+                if (hasUnsettled(person)) {
+                    adapter.notifyItemChanged(pos)
+                    Snackbar.make(binding.root, "Cannot delete: ${person.name} has unsettled bills/IOUs", Snackbar.LENGTH_LONG).show()
+                } else {
+                    deletePersonWithUndo(person, pos)
+                }
+            },
+            canSwipe = { pos ->
+                val person = persons.getOrNull(pos) ?: return@SwipeToDeleteCallback false
+                val current = DataManager.getCurrentUser(requireContext())
+                current == null || current.id != person.id
+            }
+        )
+        ItemTouchHelper(swipe).attachToRecyclerView(binding.recyclerPeople)
+
+        binding.emptyPeople.ivEmptyIcon.setImageResource(android.R.drawable.ic_menu_myplaces)
+        binding.emptyPeople.tvEmptyTitle.text = "No people added"
+        binding.emptyPeople.tvEmptySubtitle.text = "Add a name above to start tracking shared expenses"
+
         persons.clear()
         var all = DataManager.getPersons(requireContext())
         val current = DataManager.getCurrentUser(requireContext())
-        
-        // Ensure current user is in the people list
+
         if (current != null) {
             val userExists = all.any { it.id == current.id }
             if (!userExists) {
@@ -80,6 +105,7 @@ class PeopleFragment : Fragment() {
             persons.addAll(all)
         }
         adapter.notifyDataSetChanged()
+        refreshEmptyState()
 
         binding.btnAddPerson.setOnClickListener {
             val name = binding.etPersonName.text.toString().trim()
@@ -91,8 +117,37 @@ class PeopleFragment : Fragment() {
             persons.add(person)
             DataManager.savePersons(requireContext(), persons)
             adapter.notifyDataSetChanged()
+            refreshEmptyState()
             binding.etPersonName.text?.clear()
             Toast.makeText(requireContext(), "$name added!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun deletePersonWithUndo(person: Person, position: Int) {
+        val ctx = requireContext()
+        val snapshot = DataManager.getPersons(ctx).toList()
+        persons.removeAt(position)
+        adapter.notifyItemRemoved(position)
+        DataManager.savePersons(ctx, persons)
+        refreshEmptyState()
+
+        Snackbar.make(binding.root, "Removed ${person.name}", Snackbar.LENGTH_LONG)
+            .setAction("Undo") {
+                DataManager.savePersons(ctx, snapshot)
+                persons.add(position.coerceAtMost(persons.size), person)
+                adapter.notifyItemInserted(position.coerceAtMost(persons.size - 1))
+                refreshEmptyState()
+            }
+            .show()
+    }
+
+    private fun refreshEmptyState() {
+        if (persons.isEmpty()) {
+            binding.emptyPeople.root.visibility = View.VISIBLE
+            binding.recyclerPeople.visibility = View.GONE
+        } else {
+            binding.emptyPeople.root.visibility = View.GONE
+            binding.recyclerPeople.visibility = View.VISIBLE
         }
     }
 

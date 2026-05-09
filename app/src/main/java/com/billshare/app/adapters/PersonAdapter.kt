@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.billshare.app.databinding.ItemPersonBinding
 import com.billshare.app.models.Person
+import com.billshare.app.utils.AvatarHelper
 import com.billshare.app.utils.DataManager
 import android.view.View
 
@@ -24,6 +25,7 @@ class PersonAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val person = persons[position]
         holder.binding.tvPersonName.text = person.name
+        AvatarHelper.bind(holder.binding.tvAvatar, person)
         // hide delete button for current user
         val current = DataManager.getCurrentUser(holder.binding.root.context)
         if (current != null && current.id == person.id) {

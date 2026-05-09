@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand_primary">#1976D2</color>
+    <color name="brand_on_primary">#FFFFFF</color>
+    <color name="brand_primary_container">#D7E3FF</color>
+    <color name="brand_on_primary_container">#001A41</color>
+    <color name="brand_secondary">#42A5F5</color>
+    <color name="brand_on_secondary">#FFFFFF</color>
+
+    <color name="amount_positive">#2E7D32</color>
+    <color name="amount_negative">#C62828</color>
+    <color name="amount_neutral">#757575</color>
+    <color name="status_pending">#EF6C00</color>
+
+    <color name="avatar_1">#5B6BC0</color>
+    <color name="avatar_2">#26A69A</color>
+    <color name="avatar_3">#EF5350</color>
+    <color name="avatar_4">#FFA726</color>
+    <color name="avatar_5">#AB47BC</color>
+    <color name="avatar_6">#66BB6A</color>
+    <color name="avatar_7">#42A5F5</color>
+    <color name="avatar_8">#EC407A</color>
+
+    <color name="glass_fill">#80FFFFFF</color>
+    <color name="glass_stroke">#66FFFFFF</color>
+    <color name="glass_fill_strong">#B3FFFFFF</color>
+    <color name="glass_scrim">#33FFFFFF</color>
+
+    <color name="bg_grad_top">#FFE0F2FF</color>
+    <color name="bg_grad_mid">#FFFCE4EC</color>
+    <color name="bg_grad_bottom">#FFEDE7F6</color>
+</resources>

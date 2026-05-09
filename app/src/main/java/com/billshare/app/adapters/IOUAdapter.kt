@@ -1,11 +1,13 @@
 package com.billshare.app.adapters
 
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import com.billshare.app.R
 import com.billshare.app.databinding.ItemIouBinding
 import com.billshare.app.models.IOU
+import com.billshare.app.utils.AvatarHelper
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -25,9 +27,10 @@ class IOUAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val iou = ious[position]
+        val ctx = holder.binding.root.context
         holder.binding.tvIouDescription.text = iou.description
         holder.binding.tvIouDetail.text = "${iou.paidBy.name} owes ${iou.owedTo.name} \$${"%.2f".format(iou.amount)}"
-        // date
+        AvatarHelper.bind(holder.binding.tvAvatar, iou.paidBy)
         val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
         holder.binding.tvDate.text = sdf.format(Date(iou.date))
 
@@ -35,12 +38,12 @@ class IOUAdapter(
 
         if (iou.isSettled) {
             holder.binding.tvStatus.text = "Settled ✓"
-            holder.binding.tvStatus.setTextColor(Color.GRAY)
+            holder.binding.tvStatus.setTextColor(ContextCompat.getColor(ctx, R.color.amount_neutral))
             holder.binding.btnSettle.isEnabled = false
             holder.binding.btnSettle.alpha = 0.4f
         } else {
             holder.binding.tvStatus.text = "Pending"
-            holder.binding.tvStatus.setTextColor(Color.parseColor("#FF9800"))
+            holder.binding.tvStatus.setTextColor(ContextCompat.getColor(ctx, R.color.status_pending))
             holder.binding.btnSettle.isEnabled = true
             holder.binding.btnSettle.alpha = 1.0f
             holder.binding.btnSettle.setOnClickListener { onSettle(iou) }
@@ -48,4 +51,6 @@ class IOUAdapter(
     }
 
     override fun getItemCount() = ious.size
+
+    fun iouAt(position: Int): IOU? = ious.getOrNull(position)
 }
