@@ -6,15 +6,18 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.billshare.app.adapters.IOUAdapter
 import com.billshare.app.databinding.FragmentHomeOweBinding
 import com.billshare.app.models.IOU
 import com.billshare.app.models.Person
 import com.billshare.app.utils.DataManager
+import com.billshare.app.utils.SwipeToDeleteCallback
 import androidx.navigation.fragment.findNavController
 import com.billshare.app.R
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 
 class HomeOweFragment : Fragment() {
     private var _binding: FragmentHomeOweBinding? = null
@@ -22,6 +25,10 @@ class HomeOweFragment : Fragment() {
 
     private var fromTimestamp: Long? = null
     private var toTimestamp: Long? = null
+
+    private enum class SortMode { DATE, AMOUNT, NAME }
+    private var sortMode: SortMode = SortMode.DATE
+    private var sortAsc: Boolean = false
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHomeOweBinding.inflate(inflater, container, false)
@@ -31,6 +38,7 @@ class HomeOweFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.recyclerIouSummary.layoutManager = LinearLayoutManager(requireContext())
+        attachSwipeToDelete()
         setupFilters()
         setupDateButtons()
         binding.tvToggleFilters.setOnClickListener {
@@ -46,11 +54,63 @@ class HomeOweFragment : Fragment() {
         binding.tvResetFilters.setOnClickListener {
             resetFilters()
         }
+        setupSort()
+    }
+
+    private fun setupSort() {
+        binding.chipGroupSort.setOnCheckedStateChangeListener { _, checkedIds ->
+            sortMode = when (checkedIds.firstOrNull()) {
+                R.id.chip_sort_amount -> SortMode.AMOUNT
+                R.id.chip_sort_name -> SortMode.NAME
+                else -> SortMode.DATE
+            }
+            loadIOUSummary()
+        }
+        binding.btnSortDir.setOnClickListener {
+            sortAsc = !sortAsc
+            binding.btnSortDir.setIconResource(
+                if (sortAsc) android.R.drawable.arrow_up_float else android.R.drawable.arrow_down_float
+            )
+            loadIOUSummary()
+        }
+    }
+
+    private fun applySort(ious: List<IOU>): List<IOU> {
+        val sorted = when (sortMode) {
+            SortMode.DATE -> ious.sortedBy { it.date }
+            SortMode.AMOUNT -> ious.sortedBy { it.amount }
+            SortMode.NAME -> ious.sortedBy { it.description.lowercase() }
+        }
+        return if (sortAsc) sorted else sorted.reversed()
     }
 
     override fun onResume() {
         super.onResume()
         loadIOUSummary()
+    }
+
+    private fun attachSwipeToDelete() {
+        val callback = SwipeToDeleteCallback(onSwiped = { pos ->
+            val adapter = binding.recyclerIouSummary.adapter as? IOUAdapter ?: return@SwipeToDeleteCallback
+            val iou = adapter.iouAt(pos) ?: return@SwipeToDeleteCallback
+            deleteIouWithUndo(iou)
+        })
+        ItemTouchHelper(callback).attachToRecyclerView(binding.recyclerIouSummary)
+    }
+
+    private fun deleteIouWithUndo(iou: IOU) {
+        val ctx = requireContext()
+        val snapshot = DataManager.getIOUs(ctx).toList()
+        val newList = snapshot.filter { it.id != iou.id }.toMutableList()
+        DataManager.saveIOUs(ctx, newList)
+        loadIOUSummary()
+
+        Snackbar.make(binding.root, "Deleted \"${iou.description}\"", Snackbar.LENGTH_LONG)
+            .setAction("Undo") {
+                DataManager.saveIOUs(ctx, snapshot)
+                loadIOUSummary()
+            }
+            .show()
     }
 
     private fun loadIOUSummary() {
@@ -83,11 +143,16 @@ class HomeOweFragment : Fragment() {
         fromTimestamp?.let { from -> ious = ious.filter { it.date >= from } }
         toTimestamp?.let { to -> ious = ious.filter { it.date <= to } }
 
+        ious = applySort(ious)
+
         if (ious.isEmpty()) {
-            binding.tvEmptyIou.visibility = View.VISIBLE
+            binding.emptyIou.root.visibility = View.VISIBLE
+            binding.emptyIou.ivEmptyIcon.setImageResource(android.R.drawable.ic_menu_send)
+            binding.emptyIou.tvEmptyTitle.text = "No IOUs yet"
+            binding.emptyIou.tvEmptySubtitle.text = "Record a direct IOU from the Transaction tab"
             binding.recyclerIouSummary.visibility = View.GONE
         } else {
-            binding.tvEmptyIou.visibility = View.GONE
+            binding.emptyIou.root.visibility = View.GONE
             binding.recyclerIouSummary.visibility = View.VISIBLE
             binding.recyclerIouSummary.adapter = IOUAdapter(ious, { iou ->
                 showSettleDialog(iou, ious)

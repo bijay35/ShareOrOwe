@@ -4,9 +4,12 @@ import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import androidx.core.content.ContextCompat
+import com.billshare.app.R
 import com.billshare.app.databinding.ItemBalanceBinding
 import com.billshare.app.models.Balance
 import com.billshare.app.models.Person
+import com.billshare.app.utils.AvatarHelper
 
 class BalanceAdapter(
     private val balances: List<Balance>,
@@ -22,22 +25,23 @@ class BalanceAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val balance = balances[position]
+        val ctx = holder.binding.root.context
         holder.binding.tvPersonName.text = balance.person.name
-        // make entire card clickable (or just name)
+        AvatarHelper.bind(holder.binding.tvAvatar, balance.person)
         holder.binding.root.setOnClickListener { onPersonClick(balance.person) }
         val amount = balance.netAmount
         when {
             amount > 0 -> {
                 holder.binding.tvBalance.text = "Gets back \$${"%.2f".format(amount)}"
-                holder.binding.tvBalance.setTextColor(Color.parseColor("#4CAF50"))
+                holder.binding.tvBalance.setTextColor(ContextCompat.getColor(ctx, R.color.amount_positive))
             }
             amount < 0 -> {
                 holder.binding.tvBalance.text = "Owes \$${"%.2f".format(-amount)}"
-                holder.binding.tvBalance.setTextColor(Color.parseColor("#F44336"))
+                holder.binding.tvBalance.setTextColor(ContextCompat.getColor(ctx, R.color.amount_negative))
             }
             else -> {
                 holder.binding.tvBalance.text = "Settled ✓"
-                holder.binding.tvBalance.setTextColor(Color.GRAY)
+                holder.binding.tvBalance.setTextColor(ContextCompat.getColor(ctx, R.color.amount_neutral))
             }
         }
     }

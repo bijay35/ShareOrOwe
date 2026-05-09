@@ -32,6 +32,12 @@ class SettingsFragment : Fragment() {
         loadProfile()
 
         binding.btnSaveProfile.setOnClickListener { saveProfile() }
+
+        binding.switchHomeSummary.isChecked = DataManager.isHomeSummaryVisible(requireContext())
+        binding.switchHomeSummary.setOnCheckedChangeListener { _, isChecked ->
+            DataManager.setHomeSummaryVisible(requireContext(), isChecked)
+        }
+
         binding.btnExportData.setOnClickListener { exportData() }
         binding.btnImportData.setOnClickListener { importData() }
         binding.btnClearSplits.setOnClickListener { confirmClear("split bills") { clearSplits() } }

@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.ViewSwitcher
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.billshare.app.adapters.SplitSummaryAdapter
 import com.billshare.app.databinding.FragmentHomeSplitBinding
@@ -14,9 +15,11 @@ import com.billshare.app.models.Person
 import com.billshare.app.models.Settlement
 import com.billshare.app.models.SplitBill
 import com.billshare.app.utils.DataManager
+import com.billshare.app.utils.SwipeToDeleteCallback
 import androidx.navigation.fragment.findNavController
 import com.billshare.app.R
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 
 class HomeSplitFragment : Fragment() {
 
@@ -26,6 +29,10 @@ class HomeSplitFragment : Fragment() {
     private var fromTimestamp: Long? = null
     private var toTimestamp: Long? = null
 
+    private enum class SortMode { DATE, AMOUNT, NAME }
+    private var sortMode: SortMode = SortMode.DATE
+    private var sortAsc: Boolean = false
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHomeSplitBinding.inflate(inflater, container, false)
         return binding.root
@@ -34,6 +41,7 @@ class HomeSplitFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.recyclerSplit.layoutManager = LinearLayoutManager(requireContext())
+        attachSwipeToDelete()
         setupSplitFilter()
         setupDateButtons()
         binding.tvToggleFilters.setOnClickListener {
@@ -49,11 +57,68 @@ class HomeSplitFragment : Fragment() {
         binding.tvResetFilters.setOnClickListener {
             resetFilters()
         }
+        setupSort()
+    }
+
+    private fun setupSort() {
+        binding.chipGroupSort.setOnCheckedStateChangeListener { _, checkedIds ->
+            sortMode = when (checkedIds.firstOrNull()) {
+                R.id.chip_sort_amount -> SortMode.AMOUNT
+                R.id.chip_sort_name -> SortMode.NAME
+                else -> SortMode.DATE
+            }
+            loadSplitBills()
+        }
+        binding.btnSortDir.setOnClickListener {
+            sortAsc = !sortAsc
+            binding.btnSortDir.setIconResource(
+                if (sortAsc) android.R.drawable.arrow_up_float else android.R.drawable.arrow_down_float
+            )
+            loadSplitBills()
+        }
+    }
+
+    private fun applySort(bills: List<SplitBill>): List<SplitBill> {
+        val sorted = when (sortMode) {
+            SortMode.DATE -> bills.sortedBy { it.date }
+            SortMode.AMOUNT -> bills.sortedBy { it.totalAmount }
+            SortMode.NAME -> bills.sortedBy { it.description.lowercase() }
+        }
+        return if (sortAsc) sorted else sorted.reversed()
     }
 
     override fun onResume() {
         super.onResume()
         loadSplitBills()
+    }
+
+    private fun attachSwipeToDelete() {
+        val callback = SwipeToDeleteCallback(onSwiped = { pos ->
+            val adapter = binding.recyclerSplit.adapter as? SplitSummaryAdapter ?: return@SwipeToDeleteCallback
+            val bill = adapter.billAt(pos) ?: return@SwipeToDeleteCallback
+            deleteBillWithUndo(bill)
+        })
+        ItemTouchHelper(callback).attachToRecyclerView(binding.recyclerSplit)
+    }
+
+    private fun deleteBillWithUndo(bill: SplitBill) {
+        val ctx = requireContext()
+        val billsSnapshot = DataManager.getSplitBills(ctx).toList()
+        val settlementsSnapshot = DataManager.getSettlements(ctx).toList()
+
+        val newBills = billsSnapshot.filter { it.id != bill.id }.toMutableList()
+        val newSettlements = settlementsSnapshot.filter { it.billId != bill.id }.toMutableList()
+        DataManager.saveSplitBills(ctx, newBills)
+        DataManager.saveSettlements(ctx, newSettlements)
+        loadSplitBills()
+
+        Snackbar.make(binding.root, "Deleted \"${bill.description}\"", Snackbar.LENGTH_LONG)
+            .setAction("Undo") {
+                DataManager.saveSplitBills(ctx, billsSnapshot)
+                DataManager.saveSettlements(ctx, settlementsSnapshot)
+                loadSplitBills()
+            }
+            .show()
     }
 
     private fun setupSplitFilter() {
@@ -140,6 +205,8 @@ class HomeSplitFragment : Fragment() {
         fromTimestamp?.let { from -> filtered = filtered.filter { it.date >= from } }
         toTimestamp?.let { to -> filtered = filtered.filter { it.date <= to } }
 
+        filtered = applySort(filtered)
+
         val totalText = calculateSplitTotal(filtered, filterId)
         if (totalText != null) {
             binding.tvSplitTotal.text = totalText
@@ -149,10 +216,13 @@ class HomeSplitFragment : Fragment() {
         }
 
         if (filtered.isEmpty()) {
-            binding.tvEmptySplit.visibility = View.VISIBLE
+            binding.emptySplit.root.visibility = View.VISIBLE
+            binding.emptySplit.ivEmptyIcon.setImageResource(android.R.drawable.ic_menu_agenda)
+            binding.emptySplit.tvEmptyTitle.text = "No split bills yet"
+            binding.emptySplit.tvEmptySubtitle.text = "Add one from the Transaction tab"
             binding.recyclerSplit.visibility = View.GONE
         } else {
-            binding.tvEmptySplit.visibility = View.GONE
+            binding.emptySplit.root.visibility = View.GONE
             binding.recyclerSplit.visibility = View.VISIBLE
             binding.recyclerSplit.adapter = SplitSummaryAdapter(filtered, onSettle = { bill ->
                 showSettleDialog(bill, filtered)
